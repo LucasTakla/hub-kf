@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+:root {
+  --bg-app: #fafafa;
+  --bg-surface: #ffffff;
+  --bg-sidebar: #fafafa;
+  --bg-elevated: #ffffff;
+  --bg-muted: #f4f4f5;
+  --bg-hover: #f4f4f5;
+  --border-default: #e4e4e7;
+  --border-subtle: #f4f4f5;
+  --text-primary: #18181b;
+  --text-secondary: #71717a;
+  --text-tertiary: #a1a1aa;
+  --accent: #0c5ded;
+  --accent-subtle: #eff6ff;
+  --success: #059669;
+  --success-subtle: #ecfdf5;
+  --warning: #d97706;
+  --warning-subtle: #fffbeb;
+  --danger: #dc2626;
+  --danger-subtle: #fef2f2;
+}
+
+.dark {
+  --bg-app: #09090b;
+  --bg-surface: #0f0f11;
+  --bg-sidebar: #0a0a0c;
+  --bg-elevated: #141416;
+  --bg-muted: #18181b;
+  --bg-hover: #1c1c1f;
+  --border-default: #27272a;
+  --border-subtle: #1c1c1f;
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
+  --text-tertiary: #71717a;
+  --accent: #3b82f6;
+  --accent-subtle: #172554;
+  --success: #34d399;
+  --success-subtle: #022c22;
+  --warning: #fbbf24;
+  --warning-subtle: #422006;
+  --danger: #f87171;
+  --danger-subtle: #450a0a;
+}
+
+@theme inline {
+  --color-bg-app: var(--bg-app);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-sidebar: var(--bg-sidebar);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-bg-muted: var(--bg-muted);
+  --color-border-default: var(--border-default);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-inter);
+}
+
+body {
+  background: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+}
+
+.surface {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+}
+
+.surface-muted {
+  background: var(--bg-muted);
+  border: 1px solid var(--border-default);
+}
+
+.enterprise-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.enterprise-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 3px;
+}
+
+.enterprise-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}

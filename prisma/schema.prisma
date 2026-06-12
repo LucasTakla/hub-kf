@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  LEADERSHIP
+  MEMBER
+}
+
+enum RoadmapStatus {
+  PLANNED
+  IN_PROGRESS
+  DONE
+}
+
+enum RoadmapPriority {
+  P0
+  P1
+  P2
+}
+
+enum RoadmapStage {
+  RESEARCH
+  DEVELOPMENT
+  TESTING
+  LAUNCH
+}
+
+enum RoadmapConfidence {
+  HIGH
+  MEDIUM
+  AT_RISK
+}
+
+enum ActivityType {
+  BLOCKER
+  DELAY
+  RISK
+  COMPLETED
+  UPDATE
+  SHIPPING
+}
+
+enum IntegrationStatus {
+  NOT_CONNECTED
+  CONNECTED
+  ERROR
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  name      String?
+  role      UserRole @default(MEMBER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Release {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  label       String
+  subtitle    String?
+  description String?
+  owner       String?
+  color       String    @default("#0c5ded")
+  startDate   DateTime
+  targetDate  DateTime
+  completedAt DateTime?
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model RoadmapItem {
+  id           String            @id @default(cuid())
+  title        String
+  description  String?
+  module       String
+  phase        String
+  lane         String            @default("v1")
+  priority     RoadmapPriority   @default(P1)
+  status       RoadmapStatus     @default(PLANNED)
+  stage        RoadmapStage      @default(RESEARCH)
+  confidence   RoadmapConfidence @default(MEDIUM)
+  progress     Int               @default(0)
+  owner        String?
+  team         String?
+  startDate    DateTime?
+  targetDate   DateTime
+  completedAt  DateTime?
+  dependencies String?
+  dependsOnIds String?
+  sortOrder    Int               @default(0)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  activities   RoadmapActivity[]
+
+  @@index([lane, sortOrder])
+  @@index([targetDate])
+  @@index([team])
+}
+
+model RoadmapActivity {
+  id            String        @id @default(cuid())
+  message       String
+  type          ActivityType  @default(UPDATE)
+  roadmapItemId String?
+  roadmapItem   RoadmapItem?  @relation(fields: [roadmapItemId], references: [id], onDelete: SetNull)
+  createdAt     DateTime      @default(now())
+
+  @@index([createdAt])
+  @@index([type])
+}
+
+model Integration {
+  id          String            @id @default(cuid())
+  slug        String            @unique
+  name        String
+  description String?
+  status      IntegrationStatus @default(NOT_CONNECTED)
+  lastSyncAt  DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
