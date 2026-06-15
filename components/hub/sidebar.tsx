@@ -19,6 +19,7 @@ function NavLink({ item, pathname }: { item: NavItem; pathname: string }) {
   return (
     <Link
       href={item.href}
+      prefetch={true}
       className="flex items-center gap-2 rounded-md px-2 py-1.5 text-[13px] font-medium transition-colors"
       style={{
         background: isActive ? "var(--bg-muted)" : "transparent",
