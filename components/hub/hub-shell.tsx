@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 
 import { Sidebar } from "@/components/hub/sidebar";
 import { TopNav } from "@/components/hub/top-nav";
@@ -14,6 +15,10 @@ type HubShellProps = {
 export function HubShell({ children, canAccessExecutive }: HubShellProps) {
   const pathname = usePathname();
   const meta = getPageMeta(pathname);
+
+  useEffect(() => {
+    void fetch("/api/hub/session", { method: "POST" });
+  }, []);
 
   return (
     <div

@@ -1,7 +1,6 @@
 import { cache } from "react";
 import type { User } from "@prisma/client";
 
-import { readHubSession, writeHubSession } from "@/lib/auth/hub-session";
 import { canAccessExecutive } from "@/lib/auth/roles";
 import { getUserByClerkId, upsertUserFromClerk } from "@/lib/users";
 
@@ -18,24 +17,13 @@ type ResolveHubAccessInput = {
 
 export const getCachedUserByClerkId = cache(getUserByClerkId);
 
-export async function resolveHubAccess(
+export async function resolveHubAccessFromSources(
   input: ResolveHubAccessInput,
 ): Promise<HubAccessContext> {
-  const cached = await readHubSession(input.userId);
-  if (cached?.synced) {
-    return { canAccessExecutive: cached.exec };
-  }
-
   const dbUser = await ensureUserSynced(input);
-  const canAccess = canAccessExecutive(dbUser?.role, input.metadataRole);
-
-  await writeHubSession({
-    uid: input.userId,
-    exec: canAccess,
-    synced: true,
-  });
-
-  return { canAccessExecutive: canAccess };
+  return {
+    canAccessExecutive: canAccessExecutive(dbUser?.role, input.metadataRole),
+  };
 }
 
 async function ensureUserSynced(input: ResolveHubAccessInput): Promise<User | null> {
