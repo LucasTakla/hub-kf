@@ -1,7 +1,12 @@
 import type { LeadStatus } from "@prisma/client";
 
+import { parseLeadNationality } from "@/lib/leads/nationality";
+import {
+  combineDateAndTime,
+  parseLeadDate,
+  parseMonthlyRevenue,
+} from "@/lib/leads/parse-values";
 import type { LeadIngestInput } from "@/lib/leads/types";
-import { parseLeadDate, parseMonthlyRevenue, combineDateAndTime } from "@/lib/leads/parse-values";
 
 const VALID_STATUSES = new Set<LeadStatus>([
   "NEW",
@@ -152,6 +157,9 @@ export function normalizeLeadIngestPayload(body: unknown): LeadIngestInput[] {
       record.monthly_revenue,
       record.revenue,
       record.monthly_rev,
+    ),
+    nationality: parseLeadNationality(
+      pickString(record.nationality, record.market, record.language, record.lang),
     ),
     owner: pickString(record.owner, record.assignedTo, record.assigned_to),
     notes: pickString(record.notes, record.note),

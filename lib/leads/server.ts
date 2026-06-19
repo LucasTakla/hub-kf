@@ -1,6 +1,7 @@
 import type { LeadStatus, Prisma } from "@prisma/client";
 
 import { normalizePhone } from "@/lib/leads/normalize-ingest";
+import { parseLeadNationality } from "@/lib/leads/nationality";
 import type { LeadIngestInput, LeadListFilters, LeadStats } from "@/lib/leads/types";
 import { prisma } from "@/lib/prisma";
 
@@ -19,6 +20,10 @@ export async function listLeads(filters: LeadListFilters = {}) {
 
   if (filters.source && filters.source !== "all") {
     where.source = filters.source;
+  }
+
+  if (filters.nationality && filters.nationality !== "all") {
+    where.nationality = filters.nationality;
   }
 
   if (filters.search?.trim()) {
@@ -138,6 +143,7 @@ export async function ingestLead(input: LeadIngestInput) {
     adSet: input.adSet ?? undefined,
     ad: input.ad ?? undefined,
     monthlyRevenue: input.monthlyRevenue ?? undefined,
+    nationality: parseLeadNationality(input.nationality) ?? undefined,
     owner: input.owner ?? undefined,
     notes: input.notes ?? undefined,
     metadata: (input.metadata ?? undefined) as Prisma.InputJsonValue | undefined,

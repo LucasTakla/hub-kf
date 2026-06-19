@@ -62,6 +62,12 @@ enum LeadStatus {
   DUPLICATE
 }
 
+enum LeadNationality {
+  PT
+  ES
+  EN
+}
+
 model Lead {
   id            String     @id @default(cuid())
   externalId    String?    @unique
@@ -77,6 +83,7 @@ model Lead {
   adSet         String?
   ad            String?
   monthlyRevenue Float?
+  nationality   LeadNationality?
   status        LeadStatus @default(NEW)
   owner         String?
   notes         String?
@@ -89,6 +96,7 @@ model Lead {
   @@index([email])
   @@index([phone])
   @@index([source])
+  @@index([nationality])
   @@index([createdAt])
 }
 

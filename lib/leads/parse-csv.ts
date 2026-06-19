@@ -1,11 +1,12 @@
 import type { LeadStatus } from "@prisma/client";
 
-import type { LeadIngestInput } from "@/lib/leads/types";
+import { parseLeadNationality } from "@/lib/leads/nationality";
 import {
   combineDateAndTime,
   parseLeadDate,
   parseMonthlyRevenue,
 } from "@/lib/leads/parse-values";
+import type { LeadIngestInput } from "@/lib/leads/types";
 
 type CsvField = keyof LeadIngestInput | "status" | "leadTime";
 
@@ -59,6 +60,10 @@ const HEADER_ALIASES: Record<string, CsvField> = {
   revenue: "monthlyRevenue",
   monthly_rev: "monthlyRevenue",
   gross_monthly_revenue: "monthlyRevenue",
+  nationality: "nationality",
+  market: "nationality",
+  language: "nationality",
+  lang: "nationality",
   received_at: "createdAt",
   lead_date: "createdAt",
   time: "leadTime",
@@ -181,6 +186,12 @@ export function csvRowsToLeads(headers: string[], rows: string[][]): ParsedLeadR
         if (field === "monthlyRevenue") {
           const parsed = parseRevenue(value);
           if (parsed != null) lead.monthlyRevenue = parsed;
+          return;
+        }
+
+        if (field === "nationality") {
+          const parsed = parseLeadNationality(value);
+          if (parsed) lead.nationality = parsed;
           return;
         }
 

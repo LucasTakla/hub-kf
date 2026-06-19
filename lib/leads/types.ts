@@ -1,8 +1,9 @@
-import type { Lead, LeadStatus } from "@prisma/client";
+import type { LeadNationality, LeadStatus } from "@prisma/client";
 
 export type LeadListFilters = {
   status?: LeadStatus | "all";
   source?: string | "all";
+  nationality?: LeadNationality | "all";
   search?: string;
   limit?: number;
   offset?: number;
@@ -22,6 +23,7 @@ export type LeadIngestInput = {
   adSet?: string | null;
   ad?: string | null;
   monthlyRevenue?: number | null;
+  nationality?: LeadNationality | null;
   owner?: string | null;
   notes?: string | null;
   metadata?: Record<string, unknown> | null;

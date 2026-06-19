@@ -2,13 +2,14 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RefreshCw, Search } from "lucide-react";
-import type { Lead, LeadStatus } from "@prisma/client";
+import type { Lead, LeadNationality, LeadStatus } from "@prisma/client";
 
 import { MetricCard } from "@/components/marketing/shared/metric-card";
 import { ModuleHeader, PanelSection, formatNumber } from "@/components/marketing/shared/panel-section";
 import { formatLeadDate, formatLeadTime, formatMonthlyRevenue } from "@/lib/leads/parse-values";
-import { LeadStatusBadge } from "@/components/sales/shared/badges";
+import { LeadNationalityBadge, LeadStatusBadge } from "@/components/sales/shared/badges";
 import { LeadsCsvImport } from "@/components/sales/leads/leads-csv-import";
+import { LEAD_NATIONALITIES } from "@/lib/leads/nationality";
 import { LEAD_STATUSES } from "@/lib/leads/constants";
 import type { LeadStats } from "@/lib/leads/types";
 
@@ -40,6 +41,7 @@ export function LeadsWorkspace({
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<LeadStatus | "all">("all");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [nationalityFilter, setNationalityFilter] = useState<LeadNationality | "all">("all");
   const [selected, setSelected] = useState<Lead | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -50,6 +52,7 @@ export function LeadsWorkspace({
       const params = new URLSearchParams({ stats: "1" });
       if (statusFilter !== "all") params.set("status", statusFilter);
       if (sourceFilter !== "all") params.set("source", sourceFilter);
+      if (nationalityFilter !== "all") params.set("nationality", nationalityFilter);
       if (search.trim()) params.set("search", search.trim());
 
       const response = await fetch(`/api/leads?${params.toString()}`);
@@ -69,7 +72,7 @@ export function LeadsWorkspace({
     } finally {
       setRefreshing(false);
     }
-  }, [search, sourceFilter, statusFilter]);
+  }, [search, sourceFilter, nationalityFilter, statusFilter]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
@@ -168,6 +171,24 @@ export function LeadsWorkspace({
             ))}
           </select>
 
+          <select
+            value={nationalityFilter}
+            onChange={(event) => setNationalityFilter(event.target.value as LeadNationality | "all")}
+            className="rounded-md border px-2 py-1.5 text-[12px]"
+            style={{
+              background: "var(--bg-muted)",
+              borderColor: "var(--border-default)",
+              color: "var(--text-secondary)",
+            }}
+          >
+            <option value="all">All markets</option>
+            {LEAD_NATIONALITIES.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.id} — {item.description}
+              </option>
+            ))}
+          </select>
+
           <LeadsCsvImport onComplete={loadLeads} />
 
           <button
@@ -207,6 +228,7 @@ export function LeadsWorkspace({
                     <th className="pb-2 pr-4 font-medium">Business</th>
                     <th className="pb-2 pr-4 font-medium">Contact</th>
                     <th className="pb-2 pr-4 font-medium">Source</th>
+                    <th className="pb-2 pr-4 font-medium">Market</th>
                     <th className="pb-2 pr-4 font-medium">Campaign</th>
                     <th className="pb-2 pr-4 font-medium">Ad</th>
                     <th className="pb-2 pr-4 font-medium">Monthly rev.</th>
@@ -247,6 +269,13 @@ export function LeadsWorkspace({
                       </td>
                       <td className="py-2.5 pr-4" style={{ color: "var(--text-secondary)" }}>
                         {lead.source ?? "—"}
+                      </td>
+                      <td className="py-2.5 pr-4">
+                        {lead.nationality ? (
+                          <LeadNationalityBadge nationality={lead.nationality} />
+                        ) : (
+                          <span style={{ color: "var(--text-tertiary)" }}>—</span>
+                        )}
                       </td>
                       <td className="py-2.5 pr-4" style={{ color: "var(--text-secondary)" }}>
                         {lead.campaign ?? "—"}
@@ -330,6 +359,7 @@ export function LeadsWorkspace({
                 ["Email", selected.email],
                 ["Phone", selected.phone],
                 ["Source", selected.source],
+                ["Market", selected.nationality],
                 ["Campaign", selected.campaign],
                 ["Ad set", selected.adSet],
                 ["Ad", selected.ad],

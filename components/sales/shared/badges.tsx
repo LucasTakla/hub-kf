@@ -5,8 +5,9 @@ import type {
   OfferStatus,
   TaskStatus,
 } from "@/lib/sales/types";
-import type { LeadStatus } from "@prisma/client";
+import type { LeadNationality, LeadStatus } from "@prisma/client";
 import { LEAD_STATUS_LABELS } from "@/lib/leads/constants";
+import { LEAD_NATIONALITY_LABELS } from "@/lib/leads/nationality";
 import { STAGE_LABELS } from "@/lib/sales/constants";
 import type { DealStage } from "@/lib/sales/types";
 
@@ -121,6 +122,25 @@ export function LeadStatusBadge({ status }: { status: LeadStatus }) {
       style={{ background: style.bg, color: style.color }}
     >
       {LEAD_STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+export function LeadNationalityBadge({ nationality }: { nationality: LeadNationality }) {
+  const styles: Record<LeadNationality, { bg: string; color: string }> = {
+    PT: { bg: "var(--accent-subtle)", color: "var(--accent)" },
+    ES: { bg: "var(--warning-subtle)", color: "var(--warning)" },
+    EN: { bg: "var(--success-subtle)", color: "var(--success)" },
+  };
+  const style = styles[nationality];
+
+  return (
+    <span
+      className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold tracking-wide"
+      style={{ background: style.bg, color: style.color }}
+      title={LEAD_NATIONALITY_LABELS[nationality]}
+    >
+      {nationality}
     </span>
   );
 }
