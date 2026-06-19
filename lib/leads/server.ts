@@ -32,6 +32,7 @@ export async function listLeads(filters: LeadListFilters = {}) {
       { businessName: { contains: q, mode: "insensitive" } },
       { source: { contains: q, mode: "insensitive" } },
       { campaign: { contains: q, mode: "insensitive" } },
+      { ad: { contains: q, mode: "insensitive" } },
     ];
   }
 
@@ -164,7 +165,7 @@ export async function ingestLead(input: LeadIngestInput) {
   return prisma.lead.create({
     data: {
       ...data,
-      status: "NEW",
+      status: input.status ?? "NEW",
     },
   });
 }

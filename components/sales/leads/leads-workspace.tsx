@@ -7,6 +7,7 @@ import type { Lead, LeadStatus } from "@prisma/client";
 import { MetricCard } from "@/components/marketing/shared/metric-card";
 import { ModuleHeader, PanelSection, formatNumber } from "@/components/marketing/shared/panel-section";
 import { LeadStatusBadge } from "@/components/sales/shared/badges";
+import { LeadsCsvImport } from "@/components/sales/leads/leads-csv-import";
 import { LEAD_STATUSES } from "@/lib/leads/constants";
 import type { LeadStats } from "@/lib/leads/types";
 
@@ -125,7 +126,7 @@ export function LeadsWorkspace({
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search name, email, phone, business, campaign..."
+              placeholder="Search name, email, phone, business, campaign, ad..."
               className="w-full rounded-md border py-1.5 pl-8 pr-2.5 text-[12px] outline-none focus:ring-1 focus:ring-[var(--accent)]"
               style={{
                 background: "var(--bg-muted)",
@@ -171,6 +172,8 @@ export function LeadsWorkspace({
             ))}
           </select>
 
+          <LeadsCsvImport onComplete={loadLeads} />
+
           <button
             type="button"
             onClick={() => void loadLeads()}
@@ -201,7 +204,7 @@ export function LeadsWorkspace({
             description={`${total} lead${total === 1 ? "" : "s"} matching filters`}
           >
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[920px] text-left text-[12px]">
+              <table className="w-full min-w-[1040px] text-left text-[12px]">
                 <thead>
                   <tr style={{ color: "var(--text-tertiary)" }}>
                     <th className="pb-2 pr-4 font-medium">Lead</th>
@@ -209,6 +212,7 @@ export function LeadsWorkspace({
                     <th className="pb-2 pr-4 font-medium">Contact</th>
                     <th className="pb-2 pr-4 font-medium">Source</th>
                     <th className="pb-2 pr-4 font-medium">Campaign</th>
+                    <th className="pb-2 pr-4 font-medium">Ad</th>
                     <th className="pb-2 pr-4 font-medium">Status</th>
                     <th className="pb-2 font-medium">Received</th>
                   </tr>
@@ -249,6 +253,9 @@ export function LeadsWorkspace({
                       <td className="py-2.5 pr-4" style={{ color: "var(--text-secondary)" }}>
                         {lead.campaign ?? "—"}
                       </td>
+                      <td className="py-2.5 pr-4" style={{ color: "var(--text-secondary)" }}>
+                        {lead.ad ?? "—"}
+                      </td>
                       <td className="py-2.5 pr-4">
                         <LeadStatusBadge status={lead.status} />
                       </td>
@@ -262,7 +269,7 @@ export function LeadsWorkspace({
 
               {leads.length === 0 ? (
                 <p className="py-8 text-center text-[12px]" style={{ color: "var(--text-tertiary)" }}>
-                  No leads yet. Point your n8n flow at <code>/api/leads/ingest</code> to start receiving leads.
+                  No leads yet. Import a CSV or point n8n at <code>/api/leads/ingest</code> for live intake.
                 </p>
               ) : null}
             </div>

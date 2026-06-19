@@ -1,7 +1,5 @@
 import type { Lead, LeadStatus } from "@prisma/client";
 
-export type LeadRecord = Lead;
-
 export type LeadListFilters = {
   status?: LeadStatus | "all";
   source?: string | "all";
@@ -28,6 +26,7 @@ export type LeadIngestInput = {
   metadata?: Record<string, unknown> | null;
   /** Original lead date from sheet/CRM — used for historical backfill */
   createdAt?: string | Date | null;
+  status?: LeadStatus;
 };
 
 export type LeadStats = {

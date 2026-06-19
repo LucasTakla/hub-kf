@@ -1,4 +1,24 @@
+import type { LeadStatus } from "@prisma/client";
+
 import type { LeadIngestInput } from "@/lib/leads/types";
+
+const VALID_STATUSES = new Set<LeadStatus>([
+  "NEW",
+  "CONTACTED",
+  "QUALIFIED",
+  "UNQUALIFIED",
+  "CONVERTED",
+  "DUPLICATE",
+]);
+
+function pickStatus(...values: unknown[]): LeadStatus | undefined {
+  for (const value of values) {
+    if (typeof value !== "string" || !value.trim()) continue;
+    const normalized = value.trim().toUpperCase().replace(/\s+/g, "_") as LeadStatus;
+    if (VALID_STATUSES.has(normalized)) return normalized;
+  }
+  return undefined;
+}
 
 function pickString(...values: unknown[]): string | null {
   for (const value of values) {
@@ -116,6 +136,9 @@ export function normalizeLeadIngestPayload(body: unknown): LeadIngestInput[] {
     ),
     metadata: record as Record<string, unknown>,
   };
+
+  const status = pickStatus(record.status, record.lead_status, record.leadStatus);
+  if (status) normalized.status = status;
 
   const hasIdentity =
     normalized.email ||
