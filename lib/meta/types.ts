@@ -30,6 +30,13 @@ export type MetaCampaignInsightRow = {
   cost_per_action_type?: MetaActionMetric[];
 };
 
+export type MetaCampaignRow = {
+  id: string;
+  name: string;
+  effective_status?: string;
+  status?: string;
+};
+
 export type MetaCampaignMetrics = {
   id: string;
   name: string;

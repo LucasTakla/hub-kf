@@ -4,24 +4,15 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   Bot,
-  Calendar,
   Send,
 } from "lucide-react";
 
 import { useMarketingOverview } from "@/components/marketing/hooks/use-marketing-overview";
+import { MarketingDateRangeBar } from "@/components/marketing/shared/date-range-bar";
 import { MetricCard } from "@/components/marketing/shared/metric-card";
 import { ModuleHeader, PanelSection, formatCurrency, formatNumber, formatPercent } from "@/components/marketing/shared/panel-section";
 import { sampleChatMessages } from "@/lib/marketing/mock-data";
 import type { DateRange } from "@/lib/marketing/types";
-
-const dateRanges: { id: DateRange; label: string }[] = [
-  { id: "today", label: "Today" },
-  { id: "yesterday", label: "Yesterday" },
-  { id: "7d", label: "Last 7 Days" },
-  { id: "30d", label: "Last 30 Days" },
-  { id: "90d", label: "Last 90 Days" },
-  { id: "custom", label: "Custom Range" },
-];
 
 const suggestedQuestions = [
   "Why did funded deals decrease last week?",
@@ -68,30 +59,7 @@ export function AnalyticsWorkspace() {
         purpose="Business intelligence and marketing analysis — what is happening and why?"
       />
 
-      <div
-        className="flex shrink-0 items-center gap-1 overflow-x-auto border-b px-4 py-2"
-        style={{
-          background: "var(--bg-surface)",
-          borderColor: "var(--border-default)",
-        }}
-      >
-        <Calendar className="mr-1 h-3.5 w-3.5 shrink-0" style={{ color: "var(--text-tertiary)" }} />
-        {dateRanges.map(({ id, label }) => (
-          <button
-            key={id}
-            type="button"
-            onClick={() => setDateRange(id)}
-            disabled={id === "custom"}
-            className="shrink-0 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-40"
-            style={{
-              background: dateRange === id ? "var(--accent-subtle)" : "var(--bg-muted)",
-              color: dateRange === id ? "var(--accent)" : "var(--text-secondary)",
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <MarketingDateRangeBar value={dateRange} onChange={setDateRange} />
 
       <div className="flex-1 overflow-y-auto enterprise-scroll">
         <div className="space-y-4 p-4">

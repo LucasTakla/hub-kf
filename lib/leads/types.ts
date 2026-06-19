@@ -26,6 +26,8 @@ export type LeadIngestInput = {
   owner?: string | null;
   notes?: string | null;
   metadata?: Record<string, unknown> | null;
+  /** Original lead date from sheet/CRM — used for historical backfill */
+  createdAt?: string | Date | null;
 };
 
 export type LeadStats = {

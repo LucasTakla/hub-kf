@@ -7,8 +7,8 @@ import {
 } from "@/lib/meta/connection";
 import {
   fetchMetaCampaignInsights,
-  fetchMetaCampaignStatuses,
-  normalizeMetaCampaignMetrics,
+  fetchMetaCampaigns,
+  mergeInsightsWithCampaignList,
 } from "@/lib/meta/insights";
 import type {
   MetaCampaignMetrics,
@@ -56,6 +56,56 @@ function groupHubLeadsByCampaign(leads: Lead[]): Map<string, number> {
     map.set(key, (map.get(key) ?? 0) + 1);
   }
   return map;
+}
+
+function appendHubOnlyCampaigns(
+  campaigns: MetaCampaignMetrics[],
+  leads: Lead[],
+): MetaCampaignMetrics[] {
+  const existingNames = new Set(
+    campaigns.map((campaign) => normalizeCampaignKey(campaign.name)),
+  );
+  const hubOnly = new Map<string, { name: string; count: number }>();
+
+  for (const lead of leads) {
+    const name = lead.campaign?.trim();
+    if (!name) continue;
+
+    const key = normalizeCampaignKey(name);
+    if (existingNames.has(key)) continue;
+
+    const current = hubOnly.get(key);
+    if (current) {
+      current.count += 1;
+    } else {
+      hubOnly.set(key, { name, count: 1 });
+    }
+  }
+
+  const extras: MetaCampaignMetrics[] = Array.from(hubOnly.values()).map(
+    ({ name, count }) => ({
+      id: `hub-${normalizeCampaignKey(name)}`,
+      name,
+      status: "review",
+      spend: 0,
+      impressions: 0,
+      clicks: 0,
+      ctr: 0,
+      cpc: 0,
+      cpm: 0,
+      metaLeads: 0,
+      cpl: 0,
+      hubLeads: count,
+      leads: count,
+      applications: 0,
+      fundedDeals: 0,
+      revenue: 0,
+      roas: 0,
+      channel: "meta",
+    }),
+  );
+
+  return [...campaigns, ...extras].sort((a, b) => b.spend - a.spend || b.leads - a.leads);
 }
 
 function mergeHubLeadsIntoCampaigns(
@@ -131,16 +181,24 @@ export async function getMetaCampaignMetrics(
   const datePreset = META_DATE_PRESET_MAP[range] ?? "last_30d";
 
   try {
-    const [rows, statuses, hubLeads] = await Promise.all([
+    const [rows, metaCampaigns, hubLeads] = await Promise.all([
       fetchMetaCampaignInsights(config.accessToken, config.adAccountId, datePreset),
-      fetchMetaCampaignStatuses(config.accessToken, config.adAccountId),
+      fetchMetaCampaigns(config.accessToken, config.adAccountId),
       getHubLeadsForRange(datePreset),
     ]);
 
-    const campaigns = mergeHubLeadsIntoCampaigns(
-      normalizeMetaCampaignMetrics(rows, statuses),
-      hubLeads,
-    );
+    const merged = mergeInsightsWithCampaignList(rows, metaCampaigns);
+    const withHubLeads = mergeHubLeadsIntoCampaigns(merged, hubLeads);
+    const campaigns = appendHubOnlyCampaigns(withHubLeads, hubLeads);
+
+    if (campaigns.length === 0 && metaCampaigns.length === 0) {
+      return {
+        connected: true,
+        campaigns: [],
+        error:
+          "No campaigns found on this ad account. Check the Ad Account ID in Settings matches the account where your ads run.",
+      };
+    }
 
     await touchMetaSync();
     return { connected: true, campaigns };

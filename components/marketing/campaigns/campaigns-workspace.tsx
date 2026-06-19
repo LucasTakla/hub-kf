@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { useMarketingOverview } from "@/components/marketing/hooks/use-marketing-overview";
+import { MarketingDateRangeBar } from "@/components/marketing/shared/date-range-bar";
 import { MetricCard } from "@/components/marketing/shared/metric-card";
 import { ModuleTabs } from "@/components/marketing/shared/module-tabs";
 import {
@@ -23,8 +24,9 @@ import {
   PanelSection,
 } from "@/components/marketing/shared/panel-section";
 import { CampaignStatusBadge } from "@/components/marketing/shared/status-badges";
+import { getDateRangeLabel } from "@/lib/marketing/date-range";
 import { campaignRecommendations } from "@/lib/marketing/mock-data";
-import type { AiRecommendation } from "@/lib/marketing/types";
+import type { AiRecommendation, DateRange } from "@/lib/marketing/types";
 
 type ChannelTab = "meta" | "google" | "email" | "sms";
 
@@ -75,7 +77,9 @@ function RecommendationCard({ item }: { item: AiRecommendation }) {
 
 export function CampaignsWorkspace() {
   const [channel, setChannel] = useState<ChannelTab>("meta");
-  const { data, loading, error, refresh } = useMarketingOverview("30d");
+  const [dateRange, setDateRange] = useState<DateRange>("30d");
+  const { data, loading, error, refresh } = useMarketingOverview(dateRange);
+  const periodLabel = getDateRangeLabel(dateRange);
 
   const campaigns = data?.campaigns ?? [];
   const totals = data?.totals ?? {
@@ -105,7 +109,7 @@ export function CampaignsWorkspace() {
       ok: Boolean(data?.connected),
     },
     {
-      label: "Hub leads (30d)",
+      label: `Hub leads (${periodLabel.toLowerCase()})`,
       status: `${totals.hubLeads} in database`,
       ok: totals.hubLeads > 0,
     },
@@ -128,6 +132,9 @@ export function CampaignsWorkspace() {
         purpose="Day-to-day media buying and campaign management — what actions should I take today?"
       />
       <ModuleTabs tabs={channelTabs} activeTab={channel} onTabChange={setChannel} />
+      {channel === "meta" ? (
+        <MarketingDateRangeBar value={dateRange} onChange={setDateRange} />
+      ) : null}
 
       <div className="flex-1 overflow-y-auto enterprise-scroll">
         <div className="p-4">
@@ -178,7 +185,7 @@ export function CampaignsWorkspace() {
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-                <MetricCard label="Spend" value={formatCurrency(totals.spend)} change="Last 30 days" />
+                <MetricCard label="Spend" value={formatCurrency(totals.spend)} change={periodLabel} />
                 <MetricCard label="Leads" value={formatNumber(totals.leads)} change={`${totals.hubLeads} from Hub`} changePositive />
                 <MetricCard label="Meta leads" value={formatNumber(totals.metaLeads)} />
                 <MetricCard label="CPL" value={totals.cpl > 0 ? formatCurrency(totals.cpl) : "—"} highlight />
@@ -188,7 +195,7 @@ export function CampaignsWorkspace() {
 
               <PanelSection
                 title="Campaign Performance"
-                description="Meta spend merged with Hub leads matched by campaign name"
+                description={`Meta spend and Hub leads for ${periodLabel.toLowerCase()}`}
               >
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[900px] text-left text-[12px]">
@@ -245,7 +252,11 @@ export function CampaignsWorkspace() {
                   </table>
                   {campaigns.length === 0 ? (
                     <p className="py-6 text-center text-[12px]" style={{ color: "var(--text-tertiary)" }}>
-                      {loading ? "Loading Meta campaigns..." : "No campaign data for this period."}
+                      {loading
+                        ? "Loading Meta campaigns..."
+                        : data?.metaError
+                          ? data.metaError
+                          : "No campaigns on this ad account. Verify the Ad Account ID in Settings (act_...) matches your active Meta account."}
                     </p>
                   ) : null}
                 </div>

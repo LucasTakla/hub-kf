@@ -139,6 +139,7 @@ export async function ingestLead(input: LeadIngestInput) {
     owner: input.owner ?? undefined,
     notes: input.notes ?? undefined,
     metadata: (input.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
+    ...(input.createdAt ? { createdAt: input.createdAt, ingestedAt: input.createdAt } : {}),
   };
 
   if (existing) {

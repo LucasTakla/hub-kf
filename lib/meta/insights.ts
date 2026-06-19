@@ -2,15 +2,38 @@ import type {
   MetaActionMetric,
   MetaCampaignInsightRow,
   MetaCampaignMetrics,
+  MetaCampaignRow,
   MetaDatePreset,
 } from "@/lib/meta/types";
 
 const GRAPH_VERSION = "v21.0";
+const META_FETCH = { cache: "no-store" as const };
 
 type GraphResponse<T> = T & {
   error?: { message: string; type?: string; code?: number };
   paging?: { next?: string };
 };
+
+async function fetchGraphPages<T>(
+  initialUrl: string,
+): Promise<T[]> {
+  const items: T[] = [];
+  let url: string | undefined = initialUrl;
+
+  while (url) {
+    const response = await fetch(url, META_FETCH);
+    const payload = (await response.json()) as GraphResponse<{ data?: T[]; paging?: { next?: string } }>;
+
+    if (!response.ok || payload.error) {
+      throw new Error(payload.error?.message ?? "Meta Graph API request failed");
+    }
+
+    items.push(...(payload.data ?? []));
+    url = payload.paging?.next;
+  }
+
+  return items;
+}
 
 function parseNumber(value?: string | number | null): number {
   if (value == null) return 0;
@@ -73,20 +96,14 @@ export async function fetchMetaCampaignInsights(
   });
 
   const url = `https://graph.facebook.com/${GRAPH_VERSION}/act_${accountId}/insights?${params.toString()}`;
-  const response = await fetch(url, { next: { revalidate: 300 } });
-  const payload = (await response.json()) as GraphResponse<{ data?: MetaCampaignInsightRow[] }>;
-
-  if (!response.ok || payload.error) {
-    throw new Error(payload.error?.message ?? "Failed to fetch Meta campaign insights");
-  }
-
-  return payload.data ?? [];
+  const rows = await fetchGraphPages<MetaCampaignInsightRow>(url);
+  return rows;
 }
 
-export async function fetchMetaCampaignStatuses(
+export async function fetchMetaCampaigns(
   accessToken: string,
   adAccountId: string,
-): Promise<Record<string, string>> {
+): Promise<MetaCampaignRow[]> {
   const accountId = adAccountId.replace(/^act_/, "");
   const params = new URLSearchParams({
     access_token: accessToken,
@@ -95,21 +112,72 @@ export async function fetchMetaCampaignStatuses(
   });
 
   const url = `https://graph.facebook.com/${GRAPH_VERSION}/act_${accountId}/campaigns?${params.toString()}`;
-  const response = await fetch(url, { next: { revalidate: 300 } });
-  const payload = (await response.json()) as GraphResponse<{
-    data?: Array<{ id: string; effective_status?: string; status?: string }>;
-  }>;
 
-  if (!response.ok || payload.error) {
-    return {};
+  try {
+    return await fetchGraphPages<MetaCampaignRow>(url);
+  } catch {
+    return [];
   }
+}
 
+/** @deprecated use fetchMetaCampaigns */
+export async function fetchMetaCampaignStatuses(
+  accessToken: string,
+  adAccountId: string,
+): Promise<Record<string, string>> {
+  const campaigns = await fetchMetaCampaigns(accessToken, adAccountId);
   return Object.fromEntries(
-    (payload.data ?? []).map((campaign) => [
+    campaigns.map((campaign) => [
       campaign.id,
       campaign.effective_status ?? campaign.status ?? "UNKNOWN",
     ]),
   );
+}
+
+function emptyCampaignMetrics(
+  campaign: MetaCampaignRow,
+): MetaCampaignMetrics {
+  return {
+    id: campaign.id,
+    name: campaign.name,
+    status: mapEffectiveStatus(campaign.effective_status ?? campaign.status),
+    spend: 0,
+    impressions: 0,
+    clicks: 0,
+    ctr: 0,
+    cpc: 0,
+    cpm: 0,
+    metaLeads: 0,
+    cpl: 0,
+    hubLeads: 0,
+    leads: 0,
+    applications: 0,
+    fundedDeals: 0,
+    revenue: 0,
+    roas: 0,
+    channel: "meta",
+  };
+}
+
+export function mergeInsightsWithCampaignList(
+  rows: MetaCampaignInsightRow[],
+  campaigns: MetaCampaignRow[],
+): MetaCampaignMetrics[] {
+  const statusByCampaignId = Object.fromEntries(
+    campaigns.map((campaign) => [
+      campaign.id,
+      campaign.effective_status ?? campaign.status ?? "UNKNOWN",
+    ]),
+  );
+
+  const fromInsights = normalizeMetaCampaignMetrics(rows, statusByCampaignId);
+  const insightIds = new Set(fromInsights.map((campaign) => campaign.id));
+
+  const withoutInsights = campaigns
+    .filter((campaign) => !insightIds.has(campaign.id))
+    .map(emptyCampaignMetrics);
+
+  return [...fromInsights, ...withoutInsights].sort((a, b) => b.spend - a.spend);
 }
 
 export function normalizeMetaCampaignMetrics(
@@ -162,6 +230,7 @@ export async function fetchMetaAdAccounts(accessToken: string): Promise<
 
   const response = await fetch(
     `https://graph.facebook.com/${GRAPH_VERSION}/me/adaccounts?${params.toString()}`,
+    META_FETCH,
   );
   const payload = (await response.json()) as GraphResponse<{
     data?: Array<{ id: string; name?: string; account_id?: string }>;

@@ -8,6 +8,17 @@ function pickString(...values: unknown[]): string | null {
   return null;
 }
 
+function pickDate(...values: unknown[]): Date | null {
+  for (const value of values) {
+    if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+    if (typeof value === "string" || typeof value === "number") {
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) return parsed;
+    }
+  }
+  return null;
+}
+
 function pickObject(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   return value as Record<string, unknown>;
@@ -95,6 +106,14 @@ export function normalizeLeadIngestPayload(body: unknown): LeadIngestInput[] {
     ad: pickString(record.ad, record.ad_name, record.adName, record.utm_term),
     owner: pickString(record.owner, record.assignedTo, record.assigned_to),
     notes: pickString(record.notes, record.note),
+    createdAt: pickDate(
+      record.createdAt,
+      record.created_at,
+      record.date,
+      record.submittedAt,
+      record.submitted_at,
+      record.timestamp,
+    ),
     metadata: record as Record<string, unknown>,
   };
 
