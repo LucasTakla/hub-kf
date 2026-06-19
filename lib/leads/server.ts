@@ -137,6 +137,7 @@ export async function ingestLead(input: LeadIngestInput) {
     campaign: input.campaign ?? undefined,
     adSet: input.adSet ?? undefined,
     ad: input.ad ?? undefined,
+    monthlyRevenue: input.monthlyRevenue ?? undefined,
     owner: input.owner ?? undefined,
     notes: input.notes ?? undefined,
     metadata: (input.metadata ?? undefined) as Prisma.InputJsonValue | undefined,

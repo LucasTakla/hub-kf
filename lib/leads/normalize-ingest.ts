@@ -1,6 +1,7 @@
 import type { LeadStatus } from "@prisma/client";
 
 import type { LeadIngestInput } from "@/lib/leads/types";
+import { parseLeadDate, parseMonthlyRevenue, combineDateAndTime } from "@/lib/leads/parse-values";
 
 const VALID_STATUSES = new Set<LeadStatus>([
   "NEW",
@@ -31,9 +32,20 @@ function pickString(...values: unknown[]): string | null {
 function pickDate(...values: unknown[]): Date | null {
   for (const value of values) {
     if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
-    if (typeof value === "string" || typeof value === "number") {
-      const parsed = new Date(value);
-      if (!Number.isNaN(parsed.getTime())) return parsed;
+    if (typeof value === "string") {
+      const parsed = parseLeadDate(value);
+      if (parsed) return parsed;
+    }
+  }
+  return null;
+}
+
+function pickRevenue(...values: unknown[]): number | null {
+  for (const value of values) {
+    if (typeof value === "number" && Number.isFinite(value) && value >= 0) return value;
+    if (typeof value === "string") {
+      const parsed = parseMonthlyRevenue(value);
+      if (parsed != null) return parsed;
     }
   }
   return null;
@@ -97,6 +109,17 @@ export function normalizeLeadIngestPayload(body: unknown): LeadIngestInput[] {
     contact?.phone,
   );
 
+  const createdAt = pickDate(
+    record.createdAt,
+    record.created_at,
+    record.date,
+    record.submittedAt,
+    record.submitted_at,
+    record.timestamp,
+  );
+  const timeRaw = pickString(record.time, record.lead_time, record.submitted_time);
+  const combinedCreatedAt = combineDateAndTime(createdAt, timeRaw);
+
   const normalized: LeadIngestInput = {
     externalId: pickString(record.externalId, record.external_id, record.id, contact?.id),
     ghlContactId: pickString(
@@ -124,16 +147,15 @@ export function normalizeLeadIngestPayload(body: unknown): LeadIngestInput[] {
     campaign: pickString(record.campaign, record.campaign_name, record.campaignName, record.utm_campaign),
     adSet: pickString(record.adSet, record.ad_set, record.adset, record.utm_content),
     ad: pickString(record.ad, record.ad_name, record.adName, record.utm_term),
+    monthlyRevenue: pickRevenue(
+      record.monthlyRevenue,
+      record.monthly_revenue,
+      record.revenue,
+      record.monthly_rev,
+    ),
     owner: pickString(record.owner, record.assignedTo, record.assigned_to),
     notes: pickString(record.notes, record.note),
-    createdAt: pickDate(
-      record.createdAt,
-      record.created_at,
-      record.date,
-      record.submittedAt,
-      record.submitted_at,
-      record.timestamp,
-    ),
+    createdAt: combinedCreatedAt,
     metadata: record as Record<string, unknown>,
   };
 

@@ -21,6 +21,7 @@ export type LeadIngestInput = {
   campaign?: string | null;
   adSet?: string | null;
   ad?: string | null;
+  monthlyRevenue?: number | null;
   owner?: string | null;
   notes?: string | null;
   metadata?: Record<string, unknown> | null;

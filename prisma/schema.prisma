@@ -76,6 +76,7 @@ model Lead {
   campaign      String?
   adSet         String?
   ad            String?
+  monthlyRevenue Float?
   status        LeadStatus @default(NEW)
   owner         String?
   notes         String?

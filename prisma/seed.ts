@@ -179,6 +179,7 @@ async function main() {
         source: "Meta",
         campaign: "SBA Interest Form",
         adSet: "Florida Broad",
+        monthlyRevenue: 42000,
         status: "NEW",
       },
       {
@@ -189,6 +190,7 @@ async function main() {
         source: "Meta",
         campaign: "Working Capital EN",
         adSet: "Retargeting 30d",
+        monthlyRevenue: 85000,
         status: "CONTACTED",
         owner: "Sarah Chen",
       },

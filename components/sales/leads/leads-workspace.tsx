@@ -6,6 +6,7 @@ import type { Lead, LeadStatus } from "@prisma/client";
 
 import { MetricCard } from "@/components/marketing/shared/metric-card";
 import { ModuleHeader, PanelSection, formatNumber } from "@/components/marketing/shared/panel-section";
+import { formatLeadDate, formatLeadTime, formatMonthlyRevenue } from "@/lib/leads/parse-values";
 import { LeadStatusBadge } from "@/components/sales/shared/badges";
 import { LeadsCsvImport } from "@/components/sales/leads/leads-csv-import";
 import { LEAD_STATUSES } from "@/lib/leads/constants";
@@ -23,12 +24,7 @@ function displayName(lead: Lead) {
 }
 
 function formatWhen(timestamp: string | Date) {
-  return new Date(timestamp).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  return `${formatLeadDate(timestamp)} · ${formatLeadTime(timestamp)}`;
 }
 
 export function LeadsWorkspace({
@@ -213,8 +209,10 @@ export function LeadsWorkspace({
                     <th className="pb-2 pr-4 font-medium">Source</th>
                     <th className="pb-2 pr-4 font-medium">Campaign</th>
                     <th className="pb-2 pr-4 font-medium">Ad</th>
+                    <th className="pb-2 pr-4 font-medium">Monthly rev.</th>
                     <th className="pb-2 pr-4 font-medium">Status</th>
-                    <th className="pb-2 font-medium">Received</th>
+                    <th className="pb-2 pr-4 font-medium">Date</th>
+                    <th className="pb-2 font-medium">Time</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -256,11 +254,17 @@ export function LeadsWorkspace({
                       <td className="py-2.5 pr-4" style={{ color: "var(--text-secondary)" }}>
                         {lead.ad ?? "—"}
                       </td>
+                      <td className="py-2.5 pr-4 tabular-nums" style={{ color: "var(--text-secondary)" }}>
+                        {formatMonthlyRevenue(lead.monthlyRevenue)}
+                      </td>
                       <td className="py-2.5 pr-4">
                         <LeadStatusBadge status={lead.status} />
                       </td>
+                      <td className="py-2.5 pr-4 tabular-nums" style={{ color: "var(--text-tertiary)" }}>
+                        {formatLeadDate(lead.createdAt)}
+                      </td>
                       <td className="py-2.5 tabular-nums" style={{ color: "var(--text-tertiary)" }}>
-                        {formatWhen(lead.createdAt)}
+                        {formatLeadTime(lead.createdAt)}
                       </td>
                     </tr>
                   ))}
@@ -329,6 +333,7 @@ export function LeadsWorkspace({
                 ["Campaign", selected.campaign],
                 ["Ad set", selected.adSet],
                 ["Ad", selected.ad],
+                ["Monthly revenue", selected.monthlyRevenue != null ? formatMonthlyRevenue(selected.monthlyRevenue) : null],
                 ["GHL contact", selected.ghlContactId],
                 ["External ID", selected.externalId],
                 ["Owner", selected.owner],

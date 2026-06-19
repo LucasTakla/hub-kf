@@ -1,8 +1,15 @@
 import type { LeadStatus } from "@prisma/client";
 
 import type { LeadIngestInput } from "@/lib/leads/types";
+import {
+  combineDateAndTime,
+  parseLeadDate,
+  parseMonthlyRevenue,
+} from "@/lib/leads/parse-values";
 
-const HEADER_ALIASES: Record<string, keyof LeadIngestInput | "status"> = {
+type CsvField = keyof LeadIngestInput | "status" | "leadTime";
+
+const HEADER_ALIASES: Record<string, CsvField> = {
   full_name: "fullName",
   fullname: "fullName",
   name: "fullName",
@@ -47,6 +54,16 @@ const HEADER_ALIASES: Record<string, keyof LeadIngestInput | "status"> = {
   notes: "notes",
   note: "notes",
   status: "status",
+  monthly_revenue: "monthlyRevenue",
+  monthlyrevenue: "monthlyRevenue",
+  revenue: "monthlyRevenue",
+  monthly_rev: "monthlyRevenue",
+  gross_monthly_revenue: "monthlyRevenue",
+  received_at: "createdAt",
+  lead_date: "createdAt",
+  time: "leadTime",
+  lead_time: "leadTime",
+  submitted_time: "leadTime",
 };
 
 function normalizeHeader(value: string): string {
@@ -121,9 +138,11 @@ function parseStatus(value: string | undefined): LeadStatus | undefined {
 }
 
 function parseDate(value: string | undefined): Date | null {
-  if (!value?.trim()) return null;
-  const parsed = new Date(value.trim());
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+  return parseLeadDate(value);
+}
+
+function parseRevenue(value: string | undefined): number | null {
+  return parseMonthlyRevenue(value);
 }
 
 export type ParsedLeadRow = LeadIngestInput & { status?: LeadStatus };
@@ -136,6 +155,8 @@ export function csvRowsToLeads(headers: string[], rows: string[][]): ParsedLeadR
       const lead: ParsedLeadRow = { metadata: { importSource: "csv" } };
       let firstName: string | undefined;
       let lastName: string | undefined;
+      let dateValue: string | undefined;
+      let timeValue: string | undefined;
 
       fieldIndexes.forEach((field, index) => {
         const value = row[index]?.trim();
@@ -149,13 +170,28 @@ export function csvRowsToLeads(headers: string[], rows: string[][]): ParsedLeadR
         if (field === "firstName") firstName = value;
         if (field === "lastName") lastName = value;
         if (field === "createdAt") {
-          const parsed = parseDate(value);
-          if (parsed) lead.createdAt = parsed;
+          dateValue = value;
+          return;
+        }
+        if (field === "leadTime") {
+          timeValue = value;
+          return;
+        }
+
+        if (field === "monthlyRevenue") {
+          const parsed = parseRevenue(value);
+          if (parsed != null) lead.monthlyRevenue = parsed;
           return;
         }
 
         (lead as Record<string, unknown>)[field] = value;
       });
+
+      const combinedDate = combineDateAndTime(
+        dateValue ? parseDate(dateValue) : null,
+        timeValue,
+      );
+      if (combinedDate) lead.createdAt = combinedDate;
 
       if (!lead.fullName && (firstName || lastName)) {
         lead.fullName = [firstName, lastName].filter(Boolean).join(" ");
