@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       { source: "/dashboard", destination: "/overview", permanent: true },
-      { source: "/leads", destination: "/sales/pipeline", permanent: true },
+      { source: "/leads", destination: "/sales/leads", permanent: true },
       { source: "/sales/leads", destination: "/sales/pipeline", permanent: true },
       { source: "/sales/deals", destination: "/sales/pipeline", permanent: true },
       { source: "/ads", destination: "/marketing/campaigns", permanent: true },

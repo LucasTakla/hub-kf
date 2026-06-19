@@ -1,22 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   Bot,
   Calendar,
   Send,
 } from "lucide-react";
 
+import { useMarketingOverview } from "@/components/marketing/hooks/use-marketing-overview";
 import { MetricCard } from "@/components/marketing/shared/metric-card";
-import { ModuleHeader, PanelSection, formatCurrency, formatNumber, formatPercent, formatRoas } from "@/components/marketing/shared/panel-section";
-import {
-  analyticsOverview,
-  attributionData,
-  channelMetrics,
-  cohorts,
-  funnelStages,
-  sampleChatMessages,
-} from "@/lib/marketing/mock-data";
+import { ModuleHeader, PanelSection, formatCurrency, formatNumber, formatPercent } from "@/components/marketing/shared/panel-section";
+import { sampleChatMessages } from "@/lib/marketing/mock-data";
 import type { DateRange } from "@/lib/marketing/types";
 
 const dateRanges: { id: DateRange; label: string }[] = [
@@ -40,7 +35,14 @@ export function AnalyticsWorkspace() {
   const [dateRange, setDateRange] = useState<DateRange>("30d");
   const [messages, setMessages] = useState(sampleChatMessages);
   const [input, setInput] = useState("");
+  const { data, loading } = useMarketingOverview(dateRange);
 
+  const totals = data?.totals;
+  const funnelStages = data?.funnel ?? [];
+  const channelMetrics = data?.channelMetrics ?? [];
+  const leadsByCampaign = data?.leadsByCampaign ?? [];
+  const leadsBySource = data?.leadsBySource ?? [];
+  const totalSourceLeads = leadsBySource.reduce((sum, item) => sum + item.count, 0);
   const maxFunnelValue = funnelStages[1]?.value ?? 1;
 
   const handleSend = () => {
@@ -93,21 +95,35 @@ export function AnalyticsWorkspace() {
 
       <div className="flex-1 overflow-y-auto enterprise-scroll">
         <div className="space-y-4 p-4">
+          {!data?.connected ? (
+            <div
+              className="rounded-lg border px-4 py-3 text-[12px]"
+              style={{ borderColor: "var(--warning)", background: "var(--warning-subtle)" }}
+            >
+              Meta not connected — funnel uses Hub leads only. Connect in{" "}
+              <Link href="/settings" className="font-medium underline" style={{ color: "var(--accent)" }}>
+                Settings
+              </Link>
+              .
+            </div>
+          ) : null}
+
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-            <MetricCard label="Spend" value={formatCurrency(analyticsOverview.spend)} />
-            <MetricCard label="Leads" value={formatNumber(analyticsOverview.leads)} change="+12% vs prior" changePositive />
-            <MetricCard label="Applications" value={formatNumber(analyticsOverview.applications)} />
-            <MetricCard label="Offers" value={formatNumber(analyticsOverview.offers)} />
-            <MetricCard label="Funded Deals" value={formatNumber(analyticsOverview.fundedDeals)} highlight />
-            <MetricCard label="Revenue" value={formatCurrency(analyticsOverview.revenue)} highlight changePositive change="+18%" />
+            <MetricCard label="Spend" value={formatCurrency(totals?.spend ?? 0)} />
+            <MetricCard label="Leads" value={formatNumber(totals?.leads ?? 0)} change={`${totals?.hubLeads ?? 0} Hub`} changePositive />
+            <MetricCard label="CPL" value={totals?.cpl ? formatCurrency(totals.cpl) : "—"} />
+            <MetricCard label="Clicks" value={formatNumber(totals?.clicks ?? 0)} />
+            <MetricCard label="Qualified" value={formatNumber(totals?.qualified ?? 0)} />
+            <MetricCard label="Converted" value={formatNumber(totals?.converted ?? 0)} highlight />
           </div>
 
           <div className="grid gap-4 xl:grid-cols-2">
-            <PanelSection title="Funnel Analysis" description="Full acquisition-to-revenue pipeline">
+            <PanelSection title="Funnel Analysis" description="Meta impressions → Hub lead outcomes">
+              {funnelStages.length > 0 ? (
               <div className="space-y-2">
                 {funnelStages.map((stage, i) => {
-                  const isSpend = i === 0;
-                  const width = isSpend ? 100 : (stage.value / maxFunnelValue) * 100;
+                  const isSpend = false;
+                  const width = (stage.value / maxFunnelValue) * 100;
                   return (
                     <div key={stage.label} className="flex items-center gap-3">
                       <span className="w-24 shrink-0 text-[11px] font-medium" style={{ color: "var(--text-secondary)" }}>
@@ -125,11 +141,11 @@ export function AnalyticsWorkspace() {
                               background: "var(--accent)",
                             }}
                           >
-                            {isSpend ? formatCurrency(stage.value) : formatNumber(stage.value)}
+                            {formatNumber(stage.value)}
                           </div>
                         </div>
                       </div>
-                      {stage.rate !== undefined && i > 1 ? (
+                      {stage.rate !== undefined && i > 0 ? (
                         <span className="w-12 shrink-0 text-right text-[10px] tabular-nums" style={{ color: "var(--text-tertiary)" }}>
                           {formatPercent(stage.rate)}
                         </span>
@@ -140,19 +156,23 @@ export function AnalyticsWorkspace() {
                   );
                 })}
               </div>
+              ) : (
+                <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>
+                  {loading ? "Loading funnel..." : "No funnel data for this period."}
+                </p>
+              )}
             </PanelSection>
 
-            <PanelSection title="Channel Analysis" description="Compare performance across channels">
+            <PanelSection title="Channel Analysis" description="Meta spend vs Hub lead volume">
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-[12px]">
                   <thead>
                     <tr style={{ color: "var(--text-tertiary)" }}>
                       <th className="pb-2 pr-3 font-medium">Channel</th>
                       <th className="pb-2 pr-3 text-right font-medium">Spend</th>
-                      <th className="pb-2 pr-3 text-right font-medium">Apps</th>
-                      <th className="pb-2 pr-3 text-right font-medium">Funded</th>
-                      <th className="pb-2 pr-3 text-right font-medium">Revenue</th>
-                      <th className="pb-2 text-right font-medium">ROAS</th>
+                      <th className="pb-2 pr-3 text-right font-medium">Leads</th>
+                      <th className="pb-2 pr-3 text-right font-medium">Qualified</th>
+                      <th className="pb-2 text-right font-medium">Converted</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -162,14 +182,9 @@ export function AnalyticsWorkspace() {
                         <td className="py-2 pr-3 text-right tabular-nums" style={{ color: "var(--text-secondary)" }}>
                           {formatCurrency(ch.spend)}
                         </td>
+                        <td className="py-2 pr-3 text-right tabular-nums">{ch.leads}</td>
                         <td className="py-2 pr-3 text-right tabular-nums">{ch.applications}</td>
-                        <td className="py-2 pr-3 text-right tabular-nums">{ch.fundedDeals}</td>
-                        <td className="py-2 pr-3 text-right tabular-nums" style={{ color: "var(--success)" }}>
-                          {formatCurrency(ch.revenue)}
-                        </td>
-                        <td className="py-2 text-right tabular-nums font-semibold" style={{ color: "var(--accent)" }}>
-                          {formatRoas(ch.roas)}
-                        </td>
+                        <td className="py-2 text-right tabular-nums">{ch.fundedDeals}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -177,62 +192,63 @@ export function AnalyticsWorkspace() {
               </div>
             </PanelSection>
 
-            <PanelSection title="Cohort Analysis" description="Lead quality over time">
+            <PanelSection title="Leads by Campaign" description="Hub leads grouped by campaign name">
               <div className="space-y-3">
-                {cohorts.map((cohort) => (
-                  <div
-                    key={cohort.name}
-                    className="rounded-md border p-3"
-                    style={{ borderColor: "var(--border-subtle)" }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[12px] font-medium" style={{ color: "var(--text-primary)" }}>
-                        {cohort.name}
-                      </span>
-                      <span className="text-[11px] tabular-nums font-semibold" style={{ color: "var(--success)" }}>
-                        {formatCurrency(cohort.revenue)}
-                      </span>
-                    </div>
-                    <div className="mt-2 grid grid-cols-3 gap-2 text-center">
-                      <div>
-                        <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Leads</p>
-                        <p className="text-[12px] font-medium tabular-nums">{formatNumber(cohort.leads)}</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>App Rate</p>
-                        <p className="text-[12px] font-medium tabular-nums">{cohort.applicationRate}%</p>
-                      </div>
-                      <div>
-                        <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Funded Rate</p>
-                        <p className="text-[12px] font-medium tabular-nums">{cohort.fundedRate}%</p>
+                {leadsByCampaign.length > 0 ? (
+                  leadsByCampaign.map((item) => (
+                    <div
+                      key={item.campaign}
+                      className="rounded-md border p-3"
+                      style={{ borderColor: "var(--border-subtle)" }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[12px] font-medium" style={{ color: "var(--text-primary)" }}>
+                          {item.campaign}
+                        </span>
+                        <span className="text-[11px] tabular-nums font-semibold" style={{ color: "var(--accent)" }}>
+                          {formatNumber(item.count)} leads
+                        </span>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>
+                    {loading ? "Loading..." : "No campaign attribution on Hub leads yet."}
+                  </p>
+                )}
               </div>
             </PanelSection>
 
-            <PanelSection title="Attribution" description="Revenue contribution by channel">
+            <PanelSection title="Lead Sources" description="Where Hub leads are coming from">
               <div className="space-y-3">
-                {attributionData.map((item) => (
-                  <div key={item.channel}>
-                    <div className="mb-1 flex items-center justify-between text-[12px]">
-                      <span style={{ color: "var(--text-primary)" }}>{item.channel}</span>
-                      <span className="tabular-nums" style={{ color: "var(--text-secondary)" }}>
-                        {formatCurrency(item.revenue)} · {item.share}%
-                      </span>
-                    </div>
-                    <div
-                      className="h-2 overflow-hidden rounded-full"
-                      style={{ background: "var(--bg-muted)" }}
-                    >
-                      <div
-                        className="h-full rounded-full"
-                        style={{ width: `${item.share}%`, background: "var(--accent)" }}
-                      />
-                    </div>
-                  </div>
-                ))}
+                {leadsBySource.length > 0 ? (
+                  leadsBySource.map((item) => {
+                    const share = totalSourceLeads > 0 ? Math.round((item.count / totalSourceLeads) * 100) : 0;
+                    return (
+                      <div key={item.source}>
+                        <div className="mb-1 flex items-center justify-between text-[12px]">
+                          <span style={{ color: "var(--text-primary)" }}>{item.source}</span>
+                          <span className="tabular-nums" style={{ color: "var(--text-secondary)" }}>
+                            {formatNumber(item.count)} · {share}%
+                          </span>
+                        </div>
+                        <div
+                          className="h-2 overflow-hidden rounded-full"
+                          style={{ background: "var(--bg-muted)" }}
+                        >
+                          <div
+                            className="h-full rounded-full"
+                            style={{ width: `${share}%`, background: "var(--accent)" }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>
+                    {loading ? "Loading..." : "No source data on Hub leads yet."}
+                  </p>
+                )}
               </div>
             </PanelSection>
           </div>
@@ -320,7 +336,7 @@ export function AnalyticsWorkspace() {
           </PanelSection>
 
           <p className="text-center text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-            Placeholder analytics · Campaigns handles operations; Analytics handles trends and insights
+            Live data from Meta Ads + Hub leads · Connect Meta in Settings for spend metrics
           </p>
         </div>
       </div>

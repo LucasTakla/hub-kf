@@ -18,6 +18,7 @@ import {
   Server,
   Settings,
   Sparkles,
+  UserPlus,
   Users,
   Wallet,
   Workflow,
@@ -60,6 +61,7 @@ export const navGroups: NavGroup[] = [
     label: "Sales",
     items: [
       { label: "Pipeline", href: "/sales/pipeline", icon: Briefcase, description: "Deal-centric funding pipeline" },
+      { label: "Leads", href: "/sales/leads", icon: UserPlus, description: "Inbound leads from marketing and n8n intake" },
       { label: "Applications", href: "/sales/applications", icon: FileText, description: "Lender submission tracking across all deals" },
       { label: "Offers", href: "/sales/offers", icon: Receipt, description: "Funding proposals and offer comparison" },
       { label: "Lenders", href: "/sales/lenders", icon: Landmark, description: "Lender partner management and performance" },
@@ -148,6 +150,11 @@ export const modulePages: Record<string, ModulePageConfig> = {
     title: "Pipeline",
     description: "Deal-centric Kanban — the daily operating workspace for funding opportunities.",
     phase: "Deal Management",
+  },
+  "/sales/leads": {
+    title: "Leads",
+    description: "Live inbound lead inbox — intake from n8n replaces the Google Sheets log.",
+    phase: "Lead Intake",
   },
   "/sales/applications": {
     title: "Applications",

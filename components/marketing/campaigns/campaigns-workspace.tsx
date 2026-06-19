@@ -1,26 +1,29 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
   AlertTriangle,
   Bot,
   HeartPulse,
   Lightbulb,
   Palette,
+  RefreshCw,
   TrendingUp,
 } from "lucide-react";
 
+import { useMarketingOverview } from "@/components/marketing/hooks/use-marketing-overview";
 import { MetricCard } from "@/components/marketing/shared/metric-card";
 import { ModuleTabs } from "@/components/marketing/shared/module-tabs";
 import {
   formatCurrency,
   formatNumber,
-  formatRoas,
+  formatPercent,
   ModuleHeader,
   PanelSection,
 } from "@/components/marketing/shared/panel-section";
 import { CampaignStatusBadge } from "@/components/marketing/shared/status-badges";
-import { campaignRecommendations, metaCampaigns } from "@/lib/marketing/mock-data";
+import { campaignRecommendations } from "@/lib/marketing/mock-data";
 import type { AiRecommendation } from "@/lib/marketing/types";
 
 type ChannelTab = "meta" | "google" | "email" | "sms";
@@ -72,34 +75,50 @@ function RecommendationCard({ item }: { item: AiRecommendation }) {
 
 export function CampaignsWorkspace() {
   const [channel, setChannel] = useState<ChannelTab>("meta");
+  const { data, loading, error, refresh } = useMarketingOverview("30d");
 
-  const totals = useMemo(() => {
-    const campaigns = metaCampaigns;
-    const spend = campaigns.reduce((sum, c) => sum + c.spend, 0);
-    const leads = campaigns.reduce((sum, c) => sum + c.leads, 0);
-    const applications = campaigns.reduce((sum, c) => sum + c.applications, 0);
-    const funded = campaigns.reduce((sum, c) => sum + c.fundedDeals, 0);
-    const revenue = campaigns.reduce((sum, c) => sum + c.revenue, 0);
-    return { spend, leads, applications, funded, revenue, roas: revenue / spend };
-  }, []);
+  const campaigns = data?.campaigns ?? [];
+  const totals = data?.totals ?? {
+    spend: 0,
+    leads: 0,
+    hubLeads: 0,
+    metaLeads: 0,
+    clicks: 0,
+    impressions: 0,
+    cpl: 0,
+    campaigns: 0,
+    qualified: 0,
+    converted: 0,
+  };
 
-  const topCreatives = [
-    { name: "UGC — Maria Funding Story", roas: 15.0, spend: 3200 },
-    { name: "Video — Owner Testimonial v3", roas: 13.5, spend: 890 },
-    { name: "Static — Fast Funding 24hr", roas: 11.4, spend: 2100 },
-  ];
-
-  const leadQuality = [
-    { campaign: "Spanish Retargeting", score: 82, trend: "+4" },
-    { campaign: "English Broad Q2", score: 71, trend: "-2" },
-    { campaign: "SBA Interest Form", score: 48, trend: "-12" },
-  ];
+  const leadQuality = useMemo(() => {
+    return (data?.leadsByCampaign ?? []).slice(0, 5).map((item) => ({
+      campaign: item.campaign,
+      count: item.count,
+    }));
+  }, [data?.leadsByCampaign]);
 
   const healthItems = [
-    { label: "Budget pacing", status: "On track", ok: true },
-    { label: "Creative freshness", status: "2 fatiguing", ok: false },
-    { label: "Lead-to-app rate", status: "25.0% avg", ok: true },
-    { label: "Tracking integrity", status: "All pixels firing", ok: true },
+    {
+      label: "Meta connection",
+      status: data?.connected ? "Live sync" : "Not connected",
+      ok: Boolean(data?.connected),
+    },
+    {
+      label: "Hub leads (30d)",
+      status: `${totals.hubLeads} in database`,
+      ok: totals.hubLeads > 0,
+    },
+    {
+      label: "Avg CPL",
+      status: totals.cpl > 0 ? formatCurrency(totals.cpl) : "—",
+      ok: totals.cpl > 0 && totals.cpl < 150,
+    },
+    {
+      label: "Qualified leads",
+      status: `${totals.qualified} qualified`,
+      ok: totals.qualified > 0,
+    },
   ];
 
   return (
@@ -123,18 +142,53 @@ export function CampaignsWorkspace() {
             </div>
           ) : (
             <div className="space-y-4">
+              {!data?.connected ? (
+                <div
+                  className="rounded-lg border px-4 py-3 text-[12px]"
+                  style={{ borderColor: "var(--warning)", background: "var(--warning-subtle)" }}
+                >
+                  Connect Meta in{" "}
+                  <Link href="/settings" className="font-medium underline" style={{ color: "var(--accent)" }}>
+                    Settings
+                  </Link>{" "}
+                  to pull live Facebook spend and metrics. Hub leads from n8n still appear below once ingested.
+                </div>
+              ) : null}
+
+              {data?.metaError ? (
+                <div
+                  className="rounded-lg border px-4 py-3 text-[12px]"
+                  style={{ borderColor: "var(--danger)", background: "var(--danger-subtle)", color: "var(--danger)" }}
+                >
+                  Meta sync error: {data.metaError}
+                </div>
+              ) : null}
+
+              <div className="flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => void refresh()}
+                  disabled={loading}
+                  className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-medium"
+                  style={{ borderColor: "var(--border-default)", color: "var(--text-secondary)" }}
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                  Refresh
+                </button>
+              </div>
+
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
                 <MetricCard label="Spend" value={formatCurrency(totals.spend)} change="Last 30 days" />
-                <MetricCard label="Leads" value={formatNumber(totals.leads)} change="+12% vs prior" changePositive />
-                <MetricCard label="Applications" value={formatNumber(totals.applications)} />
-                <MetricCard label="Funded Deals" value={formatNumber(totals.funded)} highlight />
-                <MetricCard label="Revenue" value={formatCurrency(totals.revenue)} changePositive change="+18% vs prior" />
-                <MetricCard label="ROAS" value={formatRoas(totals.roas)} highlight changePositive change="vs 8x target" />
+                <MetricCard label="Leads" value={formatNumber(totals.leads)} change={`${totals.hubLeads} from Hub`} changePositive />
+                <MetricCard label="Meta leads" value={formatNumber(totals.metaLeads)} />
+                <MetricCard label="CPL" value={totals.cpl > 0 ? formatCurrency(totals.cpl) : "—"} highlight />
+                <MetricCard label="Clicks" value={formatNumber(totals.clicks)} />
+                <MetricCard label="Qualified" value={formatNumber(totals.qualified)} changePositive />
               </div>
 
               <PanelSection
                 title="Campaign Performance"
-                description="Connected to business outcomes — not just ad metrics"
+                description="Meta spend merged with Hub leads matched by campaign name"
               >
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[900px] text-left text-[12px]">
@@ -143,16 +197,16 @@ export function CampaignsWorkspace() {
                         <th className="pb-2 pr-4 font-medium">Campaign</th>
                         <th className="pb-2 pr-4 font-medium">Status</th>
                         <th className="pb-2 pr-4 text-right font-medium tabular-nums">Spend</th>
-                        <th className="pb-2 pr-4 text-right font-medium tabular-nums">Leads</th>
-                        <th className="pb-2 pr-4 text-right font-medium tabular-nums">MQLs</th>
-                        <th className="pb-2 pr-4 text-right font-medium tabular-nums">Apps</th>
-                        <th className="pb-2 pr-4 text-right font-medium tabular-nums">Funded</th>
-                        <th className="pb-2 pr-4 text-right font-medium tabular-nums">Revenue</th>
-                        <th className="pb-2 text-right font-medium tabular-nums">ROAS</th>
+                        <th className="pb-2 pr-4 text-right font-medium tabular-nums">Impr.</th>
+                        <th className="pb-2 pr-4 text-right font-medium tabular-nums">Clicks</th>
+                        <th className="pb-2 pr-4 text-right font-medium tabular-nums">CTR</th>
+                        <th className="pb-2 pr-4 text-right font-medium tabular-nums">Meta leads</th>
+                        <th className="pb-2 pr-4 text-right font-medium tabular-nums">Hub leads</th>
+                        <th className="pb-2 text-right font-medium tabular-nums">CPL</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {metaCampaigns.map((campaign) => (
+                      {campaigns.map((campaign) => (
                         <tr
                           key={campaign.id}
                           className="border-t transition-colors hover:opacity-90"
@@ -168,27 +222,32 @@ export function CampaignsWorkspace() {
                             {formatCurrency(campaign.spend)}
                           </td>
                           <td className="py-2.5 pr-4 text-right tabular-nums" style={{ color: "var(--text-secondary)" }}>
-                            {formatNumber(campaign.leads)}
+                            {formatNumber(campaign.impressions)}
                           </td>
                           <td className="py-2.5 pr-4 text-right tabular-nums" style={{ color: "var(--text-secondary)" }}>
-                            {formatNumber(campaign.mqls)}
+                            {formatNumber(campaign.clicks)}
                           </td>
                           <td className="py-2.5 pr-4 text-right tabular-nums" style={{ color: "var(--text-secondary)" }}>
-                            {formatNumber(campaign.applications)}
+                            {formatPercent(campaign.ctr)}
+                          </td>
+                          <td className="py-2.5 pr-4 text-right tabular-nums" style={{ color: "var(--text-secondary)" }}>
+                            {formatNumber(campaign.metaLeads)}
                           </td>
                           <td className="py-2.5 pr-4 text-right tabular-nums font-medium" style={{ color: "var(--text-primary)" }}>
-                            {formatNumber(campaign.fundedDeals)}
-                          </td>
-                          <td className="py-2.5 pr-4 text-right tabular-nums font-medium" style={{ color: "var(--success)" }}>
-                            {formatCurrency(campaign.revenue)}
+                            {formatNumber(campaign.hubLeads)}
                           </td>
                           <td className="py-2.5 text-right tabular-nums font-semibold" style={{ color: "var(--accent)" }}>
-                            {formatRoas(campaign.roas)}
+                            {campaign.cpl > 0 ? formatCurrency(campaign.cpl) : "—"}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                  {campaigns.length === 0 ? (
+                    <p className="py-6 text-center text-[12px]" style={{ color: "var(--text-tertiary)" }}>
+                      {loading ? "Loading Meta campaigns..." : "No campaign data for this period."}
+                    </p>
+                  ) : null}
                 </div>
               </PanelSection>
 
@@ -218,59 +277,27 @@ export function CampaignsWorkspace() {
                   description="Top performers linked to campaigns"
                   action={<Palette className="h-4 w-4" style={{ color: "var(--text-tertiary)" }} />}
                 >
-                  <div className="space-y-2">
-                    {topCreatives.map((creative) => (
-                      <div
-                        key={creative.name}
-                        className="flex items-center justify-between rounded-md px-2 py-2"
-                        style={{ background: "var(--bg-muted)" }}
-                      >
-                        <span className="text-[12px]" style={{ color: "var(--text-primary)" }}>
-                          {creative.name}
-                        </span>
-                        <div className="flex items-center gap-3 text-[11px] tabular-nums">
-                          <span style={{ color: "var(--text-tertiary)" }}>{formatCurrency(creative.spend)}</span>
-                          <span className="font-semibold" style={{ color: "var(--accent)" }}>
-                            {formatRoas(creative.roas)}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>
+                    Creative-level breakdown coming next — connect Meta first, then map ad-level insights.
+                  </p>
                 </PanelSection>
 
-                <PanelSection title="Lead Quality Analysis" description="MQL scoring by campaign">
+                <PanelSection title="Hub Leads by Campaign" description="Leads ingested via n8n matched to campaign names">
                   <div className="space-y-2">
-                    {leadQuality.map((item) => (
+                    {leadQuality.length > 0 ? leadQuality.map((item) => (
                       <div key={item.campaign} className="flex items-center justify-between gap-3">
                         <span className="text-[12px]" style={{ color: "var(--text-primary)" }}>
                           {item.campaign}
                         </span>
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="h-1.5 w-24 overflow-hidden rounded-full"
-                            style={{ background: "var(--border-default)" }}
-                          >
-                            <div
-                              className="h-full rounded-full"
-                              style={{
-                                width: `${item.score}%`,
-                                background: item.score >= 70 ? "var(--success)" : item.score >= 50 ? "var(--warning)" : "var(--danger)",
-                              }}
-                            />
-                          </div>
-                          <span className="w-8 text-right text-[11px] tabular-nums font-medium" style={{ color: "var(--text-secondary)" }}>
-                            {item.score}
-                          </span>
-                          <span
-                            className="w-8 text-right text-[10px] tabular-nums"
-                            style={{ color: item.trend.startsWith("+") ? "var(--success)" : "var(--danger)" }}
-                          >
-                            {item.trend}
-                          </span>
-                        </div>
+                        <span className="text-[11px] font-medium tabular-nums" style={{ color: "var(--accent)" }}>
+                          {item.count} leads
+                        </span>
                       </div>
-                    ))}
+                    )) : (
+                      <p className="text-[12px]" style={{ color: "var(--text-tertiary)" }}>
+                        No Hub leads with campaign attribution yet.
+                      </p>
+                    )}
                   </div>
                 </PanelSection>
 
@@ -298,7 +325,7 @@ export function CampaignsWorkspace() {
               </div>
 
               <p className="text-center text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-                Placeholder data · Connect Meta Ads + CRM for live campaign outcomes
+                {error ? error : data?.connected ? "Live Meta data + Hub leads" : "Connect Meta in Settings for live spend metrics"}
               </p>
             </div>
           )}

@@ -5,6 +5,8 @@ import type {
   OfferStatus,
   TaskStatus,
 } from "@/lib/sales/types";
+import type { LeadStatus } from "@prisma/client";
+import { LEAD_STATUS_LABELS } from "@/lib/leads/constants";
 import { STAGE_LABELS } from "@/lib/sales/constants";
 import type { DealStage } from "@/lib/sales/types";
 
@@ -98,6 +100,27 @@ export function TaskStatusBadge({ status }: { status: TaskStatus }) {
   return (
     <span className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium" style={{ background: s.bg, color: s.color }}>
       {s.label}
+    </span>
+  );
+}
+
+export function LeadStatusBadge({ status }: { status: LeadStatus }) {
+  const styles: Record<LeadStatus, { bg: string; color: string }> = {
+    NEW: { bg: "var(--accent-subtle)", color: "var(--accent)" },
+    CONTACTED: { bg: "var(--warning-subtle)", color: "var(--warning)" },
+    QUALIFIED: { bg: "var(--success-subtle)", color: "var(--success)" },
+    UNQUALIFIED: { bg: "var(--bg-muted)", color: "var(--text-secondary)" },
+    CONVERTED: { bg: "var(--success-subtle)", color: "var(--success)" },
+    DUPLICATE: { bg: "var(--danger-subtle)", color: "var(--danger)" },
+  };
+  const style = styles[status];
+
+  return (
+    <span
+      className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium"
+      style={{ background: style.bg, color: style.color }}
+    >
+      {LEAD_STATUS_LABELS[status]}
     </span>
   );
 }

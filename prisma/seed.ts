@@ -133,6 +133,7 @@ async function main() {
 
   await prisma.roadmapActivity.deleteMany();
   await prisma.roadmapItem.deleteMany();
+  await prisma.lead.deleteMany();
   await prisma.release.deleteMany();
 
   for (const release of releases) {
@@ -168,8 +169,44 @@ async function main() {
     });
   }
 
+  await prisma.lead.createMany({
+    data: [
+      {
+        fullName: "Maria Santos",
+        email: "maria@sunrisebakery.com",
+        phone: "3055550142",
+        businessName: "Sunrise Bakery LLC",
+        source: "Meta",
+        campaign: "SBA Interest Form",
+        adSet: "Florida Broad",
+        status: "NEW",
+      },
+      {
+        fullName: "James Whitfield",
+        email: "james@whitfieldauto.com",
+        phone: "4045550198",
+        businessName: "Whitfield Auto Repair",
+        source: "Meta",
+        campaign: "Working Capital EN",
+        adSet: "Retargeting 30d",
+        status: "CONTACTED",
+        owner: "Sarah Chen",
+      },
+      {
+        fullName: "Elena Ruiz",
+        email: "elena@ruizsalon.com",
+        phone: "7865550177",
+        businessName: "Ruiz Beauty Salon",
+        source: "Google",
+        campaign: "Brand Search",
+        status: "QUALIFIED",
+        owner: "Marcus Webb",
+      },
+    ],
+  });
+
   console.log(
-    `Seeded ${releases.length} releases, ${roadmapItems.length} roadmap items, ${activities.length} activities, and ${integrations.length} integrations.`,
+    `Seeded ${releases.length} releases, ${roadmapItems.length} roadmap items, ${activities.length} activities, ${integrations.length} integrations, and 3 sample leads.`,
   );
 }
 
