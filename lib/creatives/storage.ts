@@ -32,7 +32,7 @@ const MIME_BY_EXT: Record<string, string> = {
 export function getCreativeUploadDir(): string {
   const configured = process.env.CREATIVE_UPLOAD_DIR?.trim();
   if (configured) return path.resolve(configured);
-  return path.join(process.cwd(), "public", "creatives");
+  return path.join(/* turbopackIgnore: true */ process.cwd(), "public", "creatives");
 }
 
 export async function ensureCreativeUploadDir(): Promise<string> {
