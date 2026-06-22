@@ -51,6 +51,8 @@ export type MetaCampaignMetrics = {
   cpl: number;
   hubLeads: number;
   leads: number;
+  mqls: number;
+  cpmql: number;
   applications: number;
   fundedDeals: number;
   revenue: number;

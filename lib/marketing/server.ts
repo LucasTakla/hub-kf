@@ -59,6 +59,17 @@ function groupHubLeadsByCampaign(leads: Lead[]): Map<string, number> {
   return map;
 }
 
+function groupHubMqlsByCampaign(leads: Lead[]): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const lead of leads) {
+    if (!isMarketingQualifiedLead(lead)) continue;
+    const key = normalizeCampaignKey(lead.campaign);
+    if (!key) continue;
+    map.set(key, (map.get(key) ?? 0) + 1);
+  }
+  return map;
+}
+
 function appendHubOnlyCampaigns(
   campaigns: MetaCampaignMetrics[],
   leads: Lead[],
@@ -66,7 +77,8 @@ function appendHubOnlyCampaigns(
   const existingNames = new Set(
     campaigns.map((campaign) => normalizeCampaignKey(campaign.name)),
   );
-  const hubOnly = new Map<string, { name: string; count: number }>();
+  const hubOnly = new Map<string, { name: string; leads: number }>();
+  const mqlsByCampaign = groupHubMqlsByCampaign(leads);
 
   for (const lead of leads) {
     const name = lead.campaign?.trim();
@@ -77,14 +89,16 @@ function appendHubOnlyCampaigns(
 
     const current = hubOnly.get(key);
     if (current) {
-      current.count += 1;
+      current.leads += 1;
     } else {
-      hubOnly.set(key, { name, count: 1 });
+      hubOnly.set(key, { name, leads: 1 });
     }
   }
 
   const extras: MetaCampaignMetrics[] = Array.from(hubOnly.values()).map(
-    ({ name, count }) => ({
+    ({ name, leads: leadCount }) => {
+      const mqls = mqlsByCampaign.get(normalizeCampaignKey(name)) ?? 0;
+      return {
       id: `hub-${normalizeCampaignKey(name)}`,
       name,
       status: "review",
@@ -96,14 +110,17 @@ function appendHubOnlyCampaigns(
       cpm: 0,
       metaLeads: 0,
       cpl: 0,
-      hubLeads: count,
-      leads: count,
-      applications: 0,
+      hubLeads: leadCount,
+      leads: leadCount,
+      mqls,
+      cpmql: 0,
+      applications: mqls,
       fundedDeals: 0,
       revenue: 0,
       roas: 0,
       channel: "meta",
-    }),
+      };
+    },
   );
 
   return [...campaigns, ...extras].sort((a, b) => b.spend - a.spend || b.leads - a.leads);
@@ -114,15 +131,19 @@ function mergeHubLeadsIntoCampaigns(
   leads: Lead[],
 ): MetaCampaignMetrics[] {
   const byCampaign = groupHubLeadsByCampaign(leads);
+  const mqlsByCampaign = groupHubMqlsByCampaign(leads);
 
   return campaigns.map((campaign) => {
     const hubLeads = byCampaign.get(normalizeCampaignKey(campaign.name)) ?? 0;
-    const leadsTotal = Math.max(campaign.metaLeads, hubLeads);
+    const mqls = mqlsByCampaign.get(normalizeCampaignKey(campaign.name)) ?? 0;
     return {
       ...campaign,
       hubLeads,
-      leads: leadsTotal,
-      cpl: leadsTotal > 0 ? campaign.spend / leadsTotal : campaign.cpl,
+      leads: hubLeads,
+      mqls,
+      cpmql: mqls > 0 ? campaign.spend / mqls : 0,
+      applications: mqls,
+      cpl: hubLeads > 0 ? campaign.spend / hubLeads : 0,
     };
   });
 }
@@ -222,9 +243,8 @@ export async function getMarketingOverview(range: string = "30d") {
 
   const campaigns = metaResult.campaigns;
   const spend = campaigns.reduce((sum, campaign) => sum + campaign.spend, 0);
-  const metaLeads = campaigns.reduce((sum, campaign) => sum + campaign.metaLeads, 0);
   const hubLeadCount = hubLeads.length;
-  const leads = Math.max(metaLeads, hubLeadCount);
+  const leads = hubLeadCount;
   const clicks = campaigns.reduce((sum, campaign) => sum + campaign.clicks, 0);
   const impressions = campaigns.reduce((sum, campaign) => sum + campaign.impressions, 0);
 
@@ -299,10 +319,10 @@ export async function getMarketingOverview(range: string = "30d") {
       spend,
       leads,
       hubLeads: hubLeadCount,
-      metaLeads,
       clicks,
       impressions,
       cpl: leads > 0 ? spend / leads : 0,
+      cpmql: mqls > 0 ? spend / mqls : 0,
       campaigns: campaigns.length,
       qualified: mqls,
       converted,

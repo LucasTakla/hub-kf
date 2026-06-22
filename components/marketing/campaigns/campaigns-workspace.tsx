@@ -92,6 +92,7 @@ export function CampaignsWorkspace() {
     cpl: 0,
     campaigns: 0,
     qualified: 0,
+    cpmql: 0,
     converted: 0,
   };
 
@@ -184,13 +185,12 @@ export function CampaignsWorkspace() {
                 </button>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
                 <MetricCard label="Spend" value={formatCurrency(totals.spend)} change={periodLabel} />
-                <MetricCard label="Leads" value={formatNumber(totals.leads)} change={`${totals.hubLeads} from Hub`} changePositive />
-                <MetricCard label="Meta leads" value={formatNumber(totals.metaLeads)} />
-                <MetricCard label="CPL" value={totals.cpl > 0 ? formatCurrency(totals.cpl) : "—"} highlight />
-                <MetricCard label="Clicks" value={formatNumber(totals.clicks)} />
+                <MetricCard label="Leads" value={formatNumber(totals.hubLeads)} changePositive />
                 <MetricCard label="MQLs" value={formatNumber(totals.qualified)} changePositive />
+                <MetricCard label="CPL" value={totals.cpl > 0 ? formatCurrency(totals.cpl) : "—"} highlight />
+                <MetricCard label="CPMQL" value={totals.cpmql > 0 ? formatCurrency(totals.cpmql) : "—"} />
               </div>
 
               <PanelSection
@@ -198,7 +198,7 @@ export function CampaignsWorkspace() {
                 description={`Meta spend and Hub leads for ${periodLabel.toLowerCase()}`}
               >
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[900px] text-left text-[12px]">
+                  <table className="w-full min-w-[960px] text-left text-[12px]">
                     <thead>
                       <tr style={{ color: "var(--text-tertiary)" }}>
                         <th className="pb-2 pr-4 font-medium">Campaign</th>
@@ -207,9 +207,10 @@ export function CampaignsWorkspace() {
                         <th className="pb-2 pr-4 text-right font-medium tabular-nums">Impr.</th>
                         <th className="pb-2 pr-4 text-right font-medium tabular-nums">Clicks</th>
                         <th className="pb-2 pr-4 text-right font-medium tabular-nums">CTR</th>
-                        <th className="pb-2 pr-4 text-right font-medium tabular-nums">Meta leads</th>
-                        <th className="pb-2 pr-4 text-right font-medium tabular-nums">Hub leads</th>
-                        <th className="pb-2 text-right font-medium tabular-nums">CPL</th>
+                        <th className="pb-2 pr-4 text-right font-medium tabular-nums">Leads</th>
+                        <th className="pb-2 pr-4 text-right font-medium tabular-nums">MQLs</th>
+                        <th className="pb-2 pr-4 text-right font-medium tabular-nums">CPL</th>
+                        <th className="pb-2 text-right font-medium tabular-nums">CPMQL</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -237,14 +238,17 @@ export function CampaignsWorkspace() {
                           <td className="py-2.5 pr-4 text-right tabular-nums" style={{ color: "var(--text-secondary)" }}>
                             {formatPercent(campaign.ctr)}
                           </td>
-                          <td className="py-2.5 pr-4 text-right tabular-nums" style={{ color: "var(--text-secondary)" }}>
-                            {formatNumber(campaign.metaLeads)}
-                          </td>
                           <td className="py-2.5 pr-4 text-right tabular-nums font-medium" style={{ color: "var(--text-primary)" }}>
                             {formatNumber(campaign.hubLeads)}
                           </td>
-                          <td className="py-2.5 text-right tabular-nums font-semibold" style={{ color: "var(--accent)" }}>
+                          <td className="py-2.5 pr-4 text-right tabular-nums" style={{ color: "var(--text-secondary)" }}>
+                            {formatNumber(campaign.mqls)}
+                          </td>
+                          <td className="py-2.5 pr-4 text-right tabular-nums" style={{ color: "var(--text-secondary)" }}>
                             {campaign.cpl > 0 ? formatCurrency(campaign.cpl) : "—"}
+                          </td>
+                          <td className="py-2.5 text-right tabular-nums font-semibold" style={{ color: "var(--accent)" }}>
+                            {campaign.cpmql > 0 ? formatCurrency(campaign.cpmql) : "—"}
                           </td>
                         </tr>
                       ))}

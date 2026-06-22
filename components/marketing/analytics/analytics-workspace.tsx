@@ -78,7 +78,7 @@ export function AnalyticsWorkspace() {
 
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
             <MetricCard label="Spend" value={formatCurrency(totals?.spend ?? 0)} />
-            <MetricCard label="Leads" value={formatNumber(totals?.leads ?? 0)} change={`${totals?.hubLeads ?? 0} Hub`} changePositive />
+            <MetricCard label="Leads" value={formatNumber(totals?.hubLeads ?? 0)} changePositive />
             <MetricCard label="CPL" value={totals?.cpl ? formatCurrency(totals.cpl) : "—"} />
             <MetricCard label="Clicks" value={formatNumber(totals?.clicks ?? 0)} />
             <MetricCard label="MQLs" value={formatNumber(totals?.qualified ?? 0)} />

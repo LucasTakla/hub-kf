@@ -1,4 +1,4 @@
-import { mkdir } from "fs/promises";
+import { mkdir, writeFile, unlink } from "fs/promises";
 import path from "path";
 
 const ALLOWED_MIME_TYPES = new Set([
@@ -19,6 +19,16 @@ const EXT_BY_MIME: Record<string, string> = {
   "image/webp": ".webp",
 };
 
+const MIME_BY_EXT: Record<string, string> = {
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".mov": "video/quicktime",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".webp": "image/webp",
+};
+
 export function getCreativeUploadDir(): string {
   const configured = process.env.CREATIVE_UPLOAD_DIR?.trim();
   if (configured) return path.resolve(configured);
@@ -28,7 +38,24 @@ export function getCreativeUploadDir(): string {
 export async function ensureCreativeUploadDir(): Promise<string> {
   const dir = getCreativeUploadDir();
   await mkdir(dir, { recursive: true });
+
+  const probePath = path.join(dir, ".write-test");
+  try {
+    await writeFile(probePath, "ok");
+    await unlink(probePath);
+  } catch {
+    throw new Error(
+      `Cannot write to CREATIVE_UPLOAD_DIR (${dir}). Create the folder in Hostinger File Manager and ensure the Node app can write to it.`,
+    );
+  }
+
   return dir;
+}
+
+export function resolveCreativeMimeType(fileName: string, mimeType: string): string {
+  if (mimeType && isAllowedCreativeMimeType(mimeType)) return mimeType;
+  const ext = path.extname(fileName).toLowerCase();
+  return MIME_BY_EXT[ext] ?? mimeType;
 }
 
 export function getMaxUploadBytes(): number {

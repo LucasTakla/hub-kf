@@ -49,10 +49,15 @@ export function CreativeUploadPanel({ onComplete }: CreativeUploadPanelProps) {
       if (script.trim()) formData.append("script", script.trim());
 
       const response = await fetch("/api/creatives", { method: "POST", body: formData });
-      const payload = (await response.json()) as { error?: string; creative?: { name: string } };
+      let payload: { error?: string; creative?: { name: string } } = {};
+      try {
+        payload = (await response.json()) as typeof payload;
+      } catch {
+        throw new Error(`Upload failed (${response.status}). Check server logs on Hostinger.`);
+      }
 
       if (!response.ok) {
-        throw new Error(payload.error ?? "Upload failed");
+        throw new Error(payload.error ?? `Upload failed (${response.status})`);
       }
 
       setMessage(`Uploaded "${payload.creative?.name ?? name}".`);
@@ -101,15 +106,37 @@ export function CreativeUploadPanel({ onComplete }: CreativeUploadPanelProps) {
               ref={inputRef}
               type="file"
               accept="video/mp4,video/webm,video/quicktime,image/jpeg,image/png,image/webp"
-              className="block w-full text-[11px]"
+              className="hidden"
               onChange={(event) => {
                 const file = event.target.files?.[0] ?? null;
                 setSelectedFile(file);
+                setError(null);
                 if (file && !name.trim()) {
                   setName(file.name.replace(/\.[^.]+$/, ""));
                 }
               }}
             />
+
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              className="flex w-full flex-col items-center justify-center rounded-lg border border-dashed px-4 py-6 text-center transition-colors hover:opacity-90"
+              style={{
+                borderColor: selectedFile ? "var(--success)" : "var(--accent)",
+                background: selectedFile ? "var(--success-subtle)" : "var(--accent-subtle)",
+              }}
+            >
+              <Upload
+                className="mb-2 h-6 w-6"
+                style={{ color: selectedFile ? "var(--success)" : "var(--accent)" }}
+              />
+              <span className="text-[12px] font-medium" style={{ color: "var(--text-primary)" }}>
+                {selectedFile ? selectedFile.name : "Click to select video or image"}
+              </span>
+              <span className="mt-1 text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+                MP4, WebM, MOV, JPG, PNG, WebP · max 200 MB
+              </span>
+            </button>
 
             <input
               value={name}

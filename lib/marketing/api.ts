@@ -12,12 +12,12 @@ export type MarketingOverviewResponse = {
     spend: number;
     leads: number;
     hubLeads: number;
-    metaLeads: number;
     clicks: number;
     impressions: number;
     cpl: number;
     campaigns: number;
     qualified: number;
+    cpmql: number;
     converted: number;
   };
   campaigns: MetaCampaignMetrics[];
