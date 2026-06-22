@@ -1,6 +1,7 @@
 import type { LeadStatus, Prisma } from "@prisma/client";
 
 import { normalizePhone } from "@/lib/leads/normalize-ingest";
+import { applyStandardLeadRevenue } from "@/lib/leads/revenue-labels";
 import { parseLeadNationality } from "@/lib/leads/nationality";
 import type { LeadIngestInput, LeadListFilters, LeadStats } from "@/lib/leads/types";
 import { prisma } from "@/lib/prisma";
@@ -128,8 +129,9 @@ export async function ingestLead(input: LeadIngestInput) {
   const email = input.email?.toLowerCase() ?? null;
   const phone = normalizePhone(input.phone);
   const existing = await findExistingLead(input);
+  const revenue = applyStandardLeadRevenue(input);
 
-  const data: Prisma.LeadCreateInput = {
+  const data = {
     externalId: input.externalId ?? undefined,
     ghlContactId: input.ghlContactId ?? undefined,
     firstName: input.firstName ?? undefined,
@@ -142,13 +144,14 @@ export async function ingestLead(input: LeadIngestInput) {
     campaign: input.campaign ?? undefined,
     adSet: input.adSet ?? undefined,
     ad: input.ad ?? undefined,
-    monthlyRevenue: input.monthlyRevenue ?? undefined,
+    monthlyRevenue: revenue.monthlyRevenue ?? undefined,
+    monthlyRevenueLabel: revenue.monthlyRevenueLabel ?? undefined,
     nationality: parseLeadNationality(input.nationality) ?? undefined,
     owner: input.owner ?? undefined,
     notes: input.notes ?? undefined,
     metadata: (input.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
     ...(input.createdAt ? { createdAt: input.createdAt, ingestedAt: input.createdAt } : {}),
-  };
+  } satisfies Prisma.LeadCreateInput;
 
   if (existing) {
     if (existing.ghlContactId && input.ghlContactId === existing.ghlContactId) {

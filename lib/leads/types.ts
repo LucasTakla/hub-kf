@@ -23,6 +23,7 @@ export type LeadIngestInput = {
   adSet?: string | null;
   ad?: string | null;
   monthlyRevenue?: number | null;
+  monthlyRevenueLabel?: string | null;
   nationality?: LeadNationality | null;
   owner?: string | null;
   notes?: string | null;

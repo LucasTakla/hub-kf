@@ -128,3 +128,21 @@ export function formatMonthlyRevenue(value: number | null | undefined): string {
     maximumFractionDigits: 0,
   }).format(value);
 }
+
+import { getLeadRevenueLabel } from "@/lib/leads/qualification";
+
+export function formatLeadRevenue(lead: {
+  monthlyRevenue?: number | null;
+  monthlyRevenueLabel?: string | null;
+  metadata?: unknown;
+}): string {
+  const label = getLeadRevenueLabel(lead);
+  if (!label) return "—";
+
+  const parsed = Number.parseFloat(label.replace(/[$,\s]/g, ""));
+  if (Number.isFinite(parsed) && label.replace(/[$,\s]/g, "") === String(parsed)) {
+    return formatMonthlyRevenue(parsed);
+  }
+
+  return label;
+}

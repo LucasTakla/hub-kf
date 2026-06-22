@@ -6,7 +6,7 @@ import type { Lead, LeadNationality, LeadStatus } from "@prisma/client";
 
 import { MetricCard } from "@/components/marketing/shared/metric-card";
 import { ModuleHeader, PanelSection, formatNumber } from "@/components/marketing/shared/panel-section";
-import { formatLeadDate, formatLeadTime, formatMonthlyRevenue } from "@/lib/leads/parse-values";
+import { formatLeadDate, formatLeadTime, formatLeadRevenue } from "@/lib/leads/parse-values";
 import { LeadNationalityBadge, LeadStatusBadge } from "@/components/sales/shared/badges";
 import { LeadsCsvImport } from "@/components/sales/leads/leads-csv-import";
 import { LEAD_NATIONALITIES } from "@/lib/leads/nationality";
@@ -284,7 +284,7 @@ export function LeadsWorkspace({
                         {lead.ad ?? "—"}
                       </td>
                       <td className="py-2.5 pr-4 tabular-nums" style={{ color: "var(--text-secondary)" }}>
-                        {formatMonthlyRevenue(lead.monthlyRevenue)}
+                        {formatLeadRevenue(lead)}
                       </td>
                       <td className="py-2.5 pr-4">
                         <LeadStatusBadge status={lead.status} />
@@ -363,7 +363,7 @@ export function LeadsWorkspace({
                 ["Campaign", selected.campaign],
                 ["Ad set", selected.adSet],
                 ["Ad", selected.ad],
-                ["Monthly revenue", selected.monthlyRevenue != null ? formatMonthlyRevenue(selected.monthlyRevenue) : null],
+                ["Monthly revenue", formatLeadRevenue(selected) !== "—" ? formatLeadRevenue(selected) : null],
                 ["GHL contact", selected.ghlContactId],
                 ["External ID", selected.externalId],
                 ["Owner", selected.owner],

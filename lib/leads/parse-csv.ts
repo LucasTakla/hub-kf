@@ -4,8 +4,8 @@ import { parseLeadNationality } from "@/lib/leads/nationality";
 import {
   combineDateAndTime,
   parseLeadDate,
-  parseMonthlyRevenue,
 } from "@/lib/leads/parse-values";
+import { normalizeLeadRevenue } from "@/lib/leads/revenue-labels";
 import type { LeadIngestInput } from "@/lib/leads/types";
 
 type CsvField = keyof LeadIngestInput | "status" | "leadTime";
@@ -60,6 +60,13 @@ const HEADER_ALIASES: Record<string, CsvField> = {
   revenue: "monthlyRevenue",
   monthly_rev: "monthlyRevenue",
   gross_monthly_revenue: "monthlyRevenue",
+  monthly_revenue_label: "monthlyRevenue",
+  monthlyrevenuelabel: "monthlyRevenue",
+  receita_mensal: "monthlyRevenue",
+  faturamento_mensal: "monthlyRevenue",
+  ingresos_mensuales: "monthlyRevenue",
+  ingresos: "monthlyRevenue",
+  ingreso_mensual: "monthlyRevenue",
   nationality: "nationality",
   market: "nationality",
   language: "nationality",
@@ -76,8 +83,25 @@ function normalizeHeader(value: string): string {
     .replace(/^\uFEFF/, "")
     .trim()
     .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^\w\s]/g, "")
     .replace(/\s+/g, "_");
+}
+
+function resolveCsvField(header: string): CsvField | null {
+  const mapped = HEADER_ALIASES[header];
+  if (mapped) return mapped;
+
+  if (
+    /(?:monthly|mensal|mensual).*(?:revenue|receita|faturamento|ingreso|facturacion)/.test(header) ||
+    /(?:revenue|receita|faturamento|ingreso|facturacion).*(?:monthly|mensal|mensual)/.test(header) ||
+    /^(revenue|receita|faturamento|ingresos|ingreso)$/.test(header)
+  ) {
+    return "monthlyRevenue";
+  }
+
+  return null;
 }
 
 function parseCsvLine(line: string): string[] {
@@ -146,14 +170,14 @@ function parseDate(value: string | undefined): Date | null {
   return parseLeadDate(value);
 }
 
-function parseRevenue(value: string | undefined): number | null {
-  return parseMonthlyRevenue(value);
+function parseRevenue(value: string | undefined) {
+  return normalizeLeadRevenue(value);
 }
 
 export type ParsedLeadRow = LeadIngestInput & { status?: LeadStatus };
 
 export function csvRowsToLeads(headers: string[], rows: string[][]): ParsedLeadRow[] {
-  const fieldIndexes = headers.map((header) => HEADER_ALIASES[header] ?? null);
+  const fieldIndexes = headers.map((header) => resolveCsvField(header));
 
   return rows
     .map((row) => {
@@ -184,8 +208,9 @@ export function csvRowsToLeads(headers: string[], rows: string[][]): ParsedLeadR
         }
 
         if (field === "monthlyRevenue") {
-          const parsed = parseRevenue(value);
-          if (parsed != null) lead.monthlyRevenue = parsed;
+          const revenue = parseRevenue(value);
+          lead.monthlyRevenueLabel = revenue.monthlyRevenueLabel;
+          lead.monthlyRevenue = revenue.monthlyRevenue;
           return;
         }
 
@@ -217,6 +242,15 @@ export function csvRowsToLeads(headers: string[], rows: string[][]): ParsedLeadR
         lead.businessName ||
         lead.ghlContactId ||
         lead.externalId;
+
+      if (hasIdentity) {
+        lead.metadata = {
+          importSource: "csv",
+          csvRow: Object.fromEntries(
+            headers.map((header, index) => [header, row[index]?.trim() ?? ""]),
+          ),
+        };
+      }
 
       return hasIdentity ? lead : null;
     })

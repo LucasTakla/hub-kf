@@ -81,7 +81,7 @@ export function AnalyticsWorkspace() {
             <MetricCard label="Leads" value={formatNumber(totals?.leads ?? 0)} change={`${totals?.hubLeads ?? 0} Hub`} changePositive />
             <MetricCard label="CPL" value={totals?.cpl ? formatCurrency(totals.cpl) : "—"} />
             <MetricCard label="Clicks" value={formatNumber(totals?.clicks ?? 0)} />
-            <MetricCard label="Qualified" value={formatNumber(totals?.qualified ?? 0)} />
+            <MetricCard label="MQLs" value={formatNumber(totals?.qualified ?? 0)} />
             <MetricCard label="Converted" value={formatNumber(totals?.converted ?? 0)} highlight />
           </div>
 

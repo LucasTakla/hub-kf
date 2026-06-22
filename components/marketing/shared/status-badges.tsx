@@ -1,4 +1,6 @@
-import type { CampaignStatus, CreativeStatus } from "@/lib/marketing/types";
+import type { CampaignStatus } from "@/lib/marketing/types";
+import type { CreativeStatus as DbCreativeStatus } from "@prisma/client";
+import { CREATIVE_STATUS_LABELS } from "@/lib/creatives/types";
 
 const campaignStyles: Record<CampaignStatus, { bg: string; color: string; label: string }> = {
   active: { bg: "var(--success-subtle)", color: "var(--success)", label: "Active" },
@@ -19,21 +21,22 @@ export function CampaignStatusBadge({ status }: { status: CampaignStatus }) {
   );
 }
 
-const creativeStyles: Record<CreativeStatus, { bg: string; color: string; label: string }> = {
-  active: { bg: "var(--success-subtle)", color: "var(--success)", label: "Active" },
-  draft: { bg: "var(--bg-muted)", color: "var(--text-secondary)", label: "Draft" },
-  archived: { bg: "var(--bg-muted)", color: "var(--text-tertiary)", label: "Archived" },
-  testing: { bg: "var(--accent-subtle)", color: "var(--accent)", label: "Testing" },
+const creativeStyles: Record<DbCreativeStatus, { bg: string; color: string }> = {
+  DRAFT: { bg: "var(--bg-muted)", color: "var(--text-secondary)" },
+  APPROVED: { bg: "var(--accent-subtle)", color: "var(--accent)" },
+  LIVE: { bg: "var(--success-subtle)", color: "var(--success)" },
+  TESTING: { bg: "var(--warning-subtle)", color: "var(--warning)" },
+  ARCHIVED: { bg: "var(--bg-muted)", color: "var(--text-tertiary)" },
 };
 
-export function CreativeStatusBadge({ status }: { status: CreativeStatus }) {
+export function CreativeStatusBadge({ status }: { status: DbCreativeStatus }) {
   const style = creativeStyles[status];
   return (
     <span
       className="inline-flex rounded px-1.5 py-0.5 text-[10px] font-medium"
       style={{ background: style.bg, color: style.color }}
     >
-      {style.label}
+      {CREATIVE_STATUS_LABELS[status]}
     </span>
   );
 }

@@ -1,10 +1,10 @@
 import type { LeadStatus } from "@prisma/client";
 
 import { parseLeadNationality } from "@/lib/leads/nationality";
+import { normalizeLeadRevenue } from "@/lib/leads/revenue-labels";
 import {
   combineDateAndTime,
   parseLeadDate,
-  parseMonthlyRevenue,
 } from "@/lib/leads/parse-values";
 import type { LeadIngestInput } from "@/lib/leads/types";
 
@@ -45,15 +45,13 @@ function pickDate(...values: unknown[]): Date | null {
   return null;
 }
 
-function pickRevenue(...values: unknown[]): number | null {
+function pickRevenueFields(...values: unknown[]) {
   for (const value of values) {
-    if (typeof value === "number" && Number.isFinite(value) && value >= 0) return value;
-    if (typeof value === "string") {
-      const parsed = parseMonthlyRevenue(value);
-      if (parsed != null) return parsed;
-    }
+    if (value == null) continue;
+    const normalized = normalizeLeadRevenue(value);
+    if (normalized.monthlyRevenueLabel) return normalized;
   }
-  return null;
+  return { monthlyRevenueLabel: null, monthlyRevenue: null };
 }
 
 function pickObject(value: unknown): Record<string, unknown> | null {
@@ -125,6 +123,14 @@ export function normalizeLeadIngestPayload(body: unknown): LeadIngestInput[] {
   const timeRaw = pickString(record.time, record.lead_time, record.submitted_time);
   const combinedCreatedAt = combineDateAndTime(createdAt, timeRaw);
 
+  const revenue = pickRevenueFields(
+    record.monthlyRevenue,
+    record.monthly_revenue,
+    record.monthlyRevenu0e,
+    record.revenue,
+    record.monthly_rev,
+  );
+
   const normalized: LeadIngestInput = {
     externalId: pickString(record.externalId, record.external_id, record.id, contact?.id),
     ghlContactId: pickString(
@@ -152,12 +158,8 @@ export function normalizeLeadIngestPayload(body: unknown): LeadIngestInput[] {
     campaign: pickString(record.campaign, record.campaign_name, record.campaignName, record.utm_campaign),
     adSet: pickString(record.adSet, record.ad_set, record.adset, record.utm_content),
     ad: pickString(record.ad, record.ad_name, record.adName, record.utm_term),
-    monthlyRevenue: pickRevenue(
-      record.monthlyRevenue,
-      record.monthly_revenue,
-      record.revenue,
-      record.monthly_rev,
-    ),
+    monthlyRevenue: revenue.monthlyRevenue,
+    monthlyRevenueLabel: revenue.monthlyRevenueLabel,
     nationality: parseLeadNationality(
       pickString(record.nationality, record.market, record.language, record.lang),
     ),

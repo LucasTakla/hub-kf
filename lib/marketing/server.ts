@@ -16,6 +16,7 @@ import type {
   MetaDatePreset,
 } from "@/lib/meta/types";
 import { META_DATE_PRESET_MAP } from "@/lib/meta/types";
+import { isMarketingQualifiedLead } from "@/lib/leads/qualification";
 import type { ChannelMetrics, FunnelStage } from "@/lib/marketing/types";
 import { prisma } from "@/lib/prisma";
 
@@ -230,7 +231,7 @@ export async function getMarketingOverview(range: string = "30d") {
   const metaSources = hubLeads.filter((lead) =>
     (lead.source ?? "").toLowerCase().includes("meta"),
   );
-  const qualified = hubLeads.filter((lead) => lead.status === "QUALIFIED").length;
+  const mqls = hubLeads.filter(isMarketingQualifiedLead).length;
   const converted = hubLeads.filter((lead) => lead.status === "CONVERTED").length;
 
   const funnel: FunnelStage[] = [
@@ -246,9 +247,9 @@ export async function getMarketingOverview(range: string = "30d") {
       rate: clicks > 0 ? (hubLeadCount / clicks) * 100 : 0,
     },
     {
-      label: "Qualified",
-      value: qualified,
-      rate: hubLeadCount > 0 ? (qualified / hubLeadCount) * 100 : 0,
+      label: "MQLs",
+      value: mqls,
+      rate: hubLeadCount > 0 ? (mqls / hubLeadCount) * 100 : 0,
     },
     {
       label: "Converted",
@@ -262,7 +263,7 @@ export async function getMarketingOverview(range: string = "30d") {
       channel: "Meta",
       spend,
       leads,
-      applications: qualified,
+      applications: mqls,
       fundedDeals: converted,
       revenue: 0,
       roas: spend > 0 ? 0 : 0,
@@ -303,7 +304,7 @@ export async function getMarketingOverview(range: string = "30d") {
       impressions,
       cpl: leads > 0 ? spend / leads : 0,
       campaigns: campaigns.length,
-      qualified,
+      qualified: mqls,
       converted,
     },
     campaigns,

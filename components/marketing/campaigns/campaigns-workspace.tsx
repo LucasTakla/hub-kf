@@ -119,8 +119,8 @@ export function CampaignsWorkspace() {
       ok: totals.cpl > 0 && totals.cpl < 150,
     },
     {
-      label: "Qualified leads",
-      status: `${totals.qualified} qualified`,
+      label: "MQLs",
+      status: `${totals.qualified} MQLs`,
       ok: totals.qualified > 0,
     },
   ];
@@ -190,7 +190,7 @@ export function CampaignsWorkspace() {
                 <MetricCard label="Meta leads" value={formatNumber(totals.metaLeads)} />
                 <MetricCard label="CPL" value={totals.cpl > 0 ? formatCurrency(totals.cpl) : "—"} highlight />
                 <MetricCard label="Clicks" value={formatNumber(totals.clicks)} />
-                <MetricCard label="Qualified" value={formatNumber(totals.qualified)} changePositive />
+                <MetricCard label="MQLs" value={formatNumber(totals.qualified)} changePositive />
               </div>
 
               <PanelSection

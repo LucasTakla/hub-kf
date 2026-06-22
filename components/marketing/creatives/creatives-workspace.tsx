@@ -1,318 +1,343 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Film,
-  Image,
-  Mail,
-  MessageSquare,
-  Sparkles,
-  Trophy,
-  TrendingDown,
-  Video,
-} from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import type { CreativeStatus, CreativeType, LeadNationality } from "@prisma/client";
+import { Film, Image, RefreshCw, Search, Sparkles, Video } from "lucide-react";
 
-import { MetricCard } from "@/components/marketing/shared/metric-card";
+import { CreativeUploadPanel } from "@/components/marketing/creatives/creative-upload-panel";
 import { ModuleTabs } from "@/components/marketing/shared/module-tabs";
+import { CreativeStatusBadge } from "@/components/marketing/shared/status-badges";
+import { ModuleHeader, PanelSection } from "@/components/marketing/shared/panel-section";
+import { LeadNationalityBadge } from "@/components/sales/shared/badges";
 import {
-  formatCurrency,
-  formatRoas,
-  ModuleHeader,
-  PanelSection,
-} from "@/components/marketing/shared/panel-section";
-import {
-  CreativeStatusBadge,
-  FatigueBadge,
-  TestStatusBadge,
-} from "@/components/marketing/shared/status-badges";
-import { aiStudioPrompts, creativeTests, creatives } from "@/lib/marketing/mock-data";
-import type { CreativeType } from "@/lib/marketing/types";
+  CREATIVE_STATUSES,
+  CREATIVE_TYPE_LABELS,
+  CREATIVE_TYPES,
+  type CreativeRecord,
+} from "@/lib/creatives/types";
+import { isVideoMimeType } from "@/lib/creatives/media";
+import { LEAD_NATIONALITIES } from "@/lib/leads/nationality";
 
 type CreativesTab = "library" | "performance" | "ai-studio" | "testing";
 
-const tabs: { id: CreativesTab; label: string; description?: string }[] = [
+const tabs: { id: CreativesTab; label: string; description?: string; disabled?: boolean }[] = [
   { id: "library", label: "Library", description: "All assets" },
-  { id: "performance", label: "Performance", description: "Rankings" },
-  { id: "ai-studio", label: "AI Studio", description: "Generate" },
-  { id: "testing", label: "Testing", description: "Experiments" },
+  { id: "performance", label: "Performance", description: "Rankings", disabled: true },
+  { id: "ai-studio", label: "AI Studio", description: "Briefs", disabled: true },
+  { id: "testing", label: "Testing", description: "Experiments", disabled: true },
 ];
 
-const typeIcons: Record<CreativeType, typeof Video> = {
-  video: Video,
-  ugc: Film,
-  image: Image,
-  static: Image,
-  email: Mail,
-  sms: MessageSquare,
+type CreativesWorkspaceProps = {
+  initialCreatives: CreativeRecord[];
+  initialTotal: number;
 };
 
-const typeColors: Record<CreativeType, string> = {
-  video: "#8b5cf6",
-  ugc: "#ec4899",
-  image: "#0c5ded",
-  static: "#0891b2",
-  email: "#059669",
-  sms: "#d97706",
-};
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
-export function CreativesWorkspace() {
+function TypeIcon({ mimeType }: { mimeType: string }) {
+  const Icon = mimeType.startsWith("video/") ? Video : Image;
+  return <Icon className="h-8 w-8" style={{ color: "var(--accent)" }} strokeWidth={1.5} />;
+}
+
+export function CreativesWorkspace({ initialCreatives, initialTotal }: CreativesWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<CreativesTab>("library");
-  const [prompt, setPrompt] = useState("");
-  const [generated, setGenerated] = useState<string | null>(null);
+  const [creatives, setCreatives] = useState(initialCreatives);
+  const [total, setTotal] = useState(initialTotal);
+  const [selected, setSelected] = useState<CreativeRecord | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<CreativeStatus | "all">("all");
+  const [typeFilter, setTypeFilter] = useState<CreativeType | "all">("all");
+  const [nationalityFilter, setNationalityFilter] = useState<LeadNationality | "all">("all");
+  const [refreshing, setRefreshing] = useState(false);
 
-  const sortedByRoas = [...creatives].sort((a, b) => b.roas - a.roas);
+  const loadCreatives = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (typeFilter !== "all") params.set("type", typeFilter);
+      if (nationalityFilter !== "all") params.set("nationality", nationalityFilter);
+      if (search.trim()) params.set("search", search.trim());
 
-  const handleGenerate = () => {
-    if (!prompt.trim()) return;
-    setGenerated(
-      `**Concept:** ${prompt}\n\n**Hook:** "Your business doesn't wait — neither should your funding."\n\n**Script (30s):**\n[Open on busy restaurant kitchen]\nVO: "Maria had payroll due Friday. The bank said two weeks."\n[Cut to phone notification]\nVO: "We said same day. $85,000 approved in 4 hours."\n\n**CTA:** Apply in 2 minutes — link in bio.`,
-    );
-  };
+      const response = await fetch(`/api/creatives?${params.toString()}`);
+      if (!response.ok) throw new Error("Failed to load creatives");
+      const data = (await response.json()) as { items: CreativeRecord[]; total: number };
+      setCreatives(data.items);
+      setTotal(data.total);
+      setSelected((current) =>
+        current ? data.items.find((item) => item.id === current.id) ?? null : null,
+      );
+    } finally {
+      setRefreshing(false);
+    }
+  }, [nationalityFilter, search, statusFilter, typeFilter]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      void loadCreatives();
+    }, 250);
+    return () => clearTimeout(timeout);
+  }, [loadCreatives]);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <ModuleHeader
-        title="Produce"
-        purpose="Creative asset management and AI-powered generation — what should we create, improve, or scale?"
-      />
-      <ModuleTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
+    <div className="flex h-full overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <ModuleHeader
+          title="Produce"
+          purpose="Creative library hosted on Hostinger — upload, preview, and organize ad assets"
+        />
+        <ModuleTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab} />
 
-      <div className="flex-1 overflow-y-auto enterprise-scroll">
-        <div className="p-4">
-          {activeTab === "library" && (
-            <div className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {creatives.map((creative) => {
-                  const Icon = typeIcons[creative.type];
-                  return (
-                    <article
-                      key={creative.id}
-                      className="overflow-hidden rounded-lg border"
-                      style={{
-                        background: "var(--bg-surface)",
-                        borderColor: "var(--border-default)",
-                      }}
-                    >
-                      <div
-                        className="flex h-32 items-center justify-center"
-                        style={{ background: `${typeColors[creative.type]}15` }}
-                      >
-                        <Icon className="h-10 w-10" style={{ color: typeColors[creative.type] }} strokeWidth={1.5} />
-                      </div>
-                      <div className="p-3.5">
-                        <div className="flex items-start justify-between gap-2">
-                          <h4 className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>
-                            {creative.name}
-                          </h4>
-                          <CreativeStatusBadge status={creative.status} />
-                        </div>
-                        <p className="mt-1 text-[11px]" style={{ color: "var(--text-tertiary)" }}>
-                          {creative.creator} · {creative.createdAt}
-                        </p>
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {creative.tags.map((tag) => (
-                            <span
-                              key={tag}
-                              className="rounded px-1.5 py-0.5 text-[10px]"
-                              style={{ background: "var(--bg-muted)", color: "var(--text-secondary)" }}
-                            >
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                        <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                          <div>
-                            <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>CTR</p>
-                            <p className="text-[12px] font-medium tabular-nums">{creative.ctr}%</p>
-                          </div>
-                          <div>
-                            <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>ROAS</p>
-                            <p className="text-[12px] font-medium tabular-nums" style={{ color: "var(--accent)" }}>
-                              {formatRoas(creative.roas)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>Revenue</p>
-                            <p className="text-[12px] font-medium tabular-nums">{formatCurrency(creative.revenue)}</p>
-                          </div>
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
+        {activeTab === "library" ? (
+          <>
+            <div
+              className="flex shrink-0 flex-wrap items-center gap-2 border-b px-4 py-2.5"
+              style={{ background: "var(--bg-surface)", borderColor: "var(--border-default)" }}
+            >
+              <div className="relative min-w-[200px] flex-1">
+                <Search
+                  className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2"
+                  style={{ color: "var(--text-tertiary)" }}
+                />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Search name, Meta ad, tags..."
+                  className="w-full rounded-md border py-1.5 pl-8 pr-2.5 text-[12px] outline-none"
+                  style={{
+                    background: "var(--bg-muted)",
+                    borderColor: "var(--border-default)",
+                    color: "var(--text-primary)",
+                  }}
+                />
               </div>
+
+              <select
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value as CreativeStatus | "all")}
+                className="rounded-md border px-2 py-1.5 text-[12px]"
+                style={{ background: "var(--bg-muted)", borderColor: "var(--border-default)" }}
+              >
+                <option value="all">All statuses</option>
+                {CREATIVE_STATUSES.map((item) => (
+                  <option key={item.id} value={item.id}>{item.label}</option>
+                ))}
+              </select>
+
+              <select
+                value={typeFilter}
+                onChange={(event) => setTypeFilter(event.target.value as CreativeType | "all")}
+                className="rounded-md border px-2 py-1.5 text-[12px]"
+                style={{ background: "var(--bg-muted)", borderColor: "var(--border-default)" }}
+              >
+                <option value="all">All types</option>
+                {CREATIVE_TYPES.map((item) => (
+                  <option key={item.id} value={item.id}>{item.label}</option>
+                ))}
+              </select>
+
+              <select
+                value={nationalityFilter}
+                onChange={(event) => setNationalityFilter(event.target.value as LeadNationality | "all")}
+                className="rounded-md border px-2 py-1.5 text-[12px]"
+                style={{ background: "var(--bg-muted)", borderColor: "var(--border-default)" }}
+              >
+                <option value="all">All markets</option>
+                {LEAD_NATIONALITIES.map((item) => (
+                  <option key={item.id} value={item.id}>{item.id}</option>
+                ))}
+              </select>
+
+              <CreativeUploadPanel onComplete={loadCreatives} />
+
+              <button
+                type="button"
+                onClick={() => void loadCreatives()}
+                disabled={refreshing}
+                className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[12px]"
+                style={{ borderColor: "var(--border-default)", color: "var(--text-secondary)" }}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                Refresh
+              </button>
             </div>
-          )}
 
-          {activeTab === "performance" && (
-            <PanelSection title="Creative Rankings" description="Sorted by ROAS — full funnel metrics">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[800px] text-left text-[12px]">
-                  <thead>
-                    <tr style={{ color: "var(--text-tertiary)" }}>
-                      <th className="pb-2 pr-4 font-medium">Creative</th>
-                      <th className="pb-2 pr-4 text-right font-medium">Spend</th>
-                      <th className="pb-2 pr-4 text-right font-medium">CTR</th>
-                      <th className="pb-2 pr-4 text-right font-medium">CPL</th>
-                      <th className="pb-2 pr-4 text-right font-medium">Cost/App</th>
-                      <th className="pb-2 pr-4 text-right font-medium">Cost/Funded</th>
-                      <th className="pb-2 pr-4 text-right font-medium">Revenue</th>
-                      <th className="pb-2 text-right font-medium">ROAS</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedByRoas.map((c, i) => (
-                      <tr key={c.id} className="border-t" style={{ borderColor: "var(--border-subtle)" }}>
-                        <td className="py-2.5 pr-4">
-                          <span className="mr-2 text-[10px] tabular-nums" style={{ color: "var(--text-tertiary)" }}>
-                            #{i + 1}
-                          </span>
-                          <span className="font-medium" style={{ color: "var(--text-primary)" }}>{c.name}</span>
-                        </td>
-                        <td className="py-2.5 pr-4 text-right tabular-nums" style={{ color: "var(--text-secondary)" }}>
-                          {formatCurrency(c.spend)}
-                        </td>
-                        <td className="py-2.5 pr-4 text-right tabular-nums">{c.ctr}%</td>
-                        <td className="py-2.5 pr-4 text-right tabular-nums">${c.cpl}</td>
-                        <td className="py-2.5 pr-4 text-right tabular-nums">${c.costPerApplication}</td>
-                        <td className="py-2.5 pr-4 text-right tabular-nums">${c.costPerFunded}</td>
-                        <td className="py-2.5 pr-4 text-right tabular-nums" style={{ color: "var(--success)" }}>
-                          {formatCurrency(c.revenue)}
-                        </td>
-                        <td className="py-2.5 text-right tabular-nums font-semibold" style={{ color: "var(--accent)" }}>
-                          {formatRoas(c.roas)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </PanelSection>
-          )}
-
-          {activeTab === "ai-studio" && (
-            <div className="grid gap-4 xl:grid-cols-2">
-              <PanelSection title="Generate Creative" description="AI-powered concept and script generation">
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-[11px] font-medium" style={{ color: "var(--text-secondary)" }}>
-                      Describe what you want to create
-                    </label>
-                    <textarea
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      rows={4}
-                      placeholder="e.g. UGC concept for restaurant owner needing working capital..."
-                      className="mt-1.5 w-full resize-none rounded-md border px-3 py-2 text-[12px] outline-none focus:ring-1"
-                      style={{
-                        background: "var(--bg-muted)",
-                        borderColor: "var(--border-default)",
-                        color: "var(--text-primary)",
-                      }}
-                    />
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {aiStudioPrompts.map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => setPrompt(p)}
-                        className="rounded-md border px-2 py-1 text-[10px] transition-colors hover:opacity-80"
+            <div className="flex-1 overflow-y-auto p-4 enterprise-scroll">
+              <PanelSection
+                title="Asset library"
+                description={`${total} creative${total === 1 ? "" : "s"} stored on Hostinger`}
+              >
+                {creatives.length > 0 ? (
+                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {creatives.map((creative) => (
+                      <article
+                        key={creative.id}
+                        onClick={() => setSelected(creative)}
+                        className="cursor-pointer overflow-hidden rounded-lg border transition-colors hover:opacity-95"
                         style={{
-                          borderColor: "var(--border-default)",
-                          color: "var(--text-secondary)",
-                          background: "var(--bg-muted)",
+                          background: "var(--bg-surface)",
+                          borderColor: selected?.id === creative.id ? "var(--accent)" : "var(--border-default)",
                         }}
                       >
-                        {p}
-                      </button>
+                        <div
+                          className="relative flex aspect-video items-center justify-center overflow-hidden"
+                          style={{ background: "var(--bg-muted)" }}
+                        >
+                          {isVideoMimeType(creative.mimeType) ? (
+                            <video
+                              src={creative.assetUrl}
+                              className="h-full w-full object-cover"
+                              muted
+                              playsInline
+                              preload="metadata"
+                              onMouseEnter={(event) => void event.currentTarget.play().catch(() => undefined)}
+                              onMouseLeave={(event) => {
+                                event.currentTarget.pause();
+                                event.currentTarget.currentTime = 0;
+                              }}
+                            />
+                          ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={creative.assetUrl}
+                              alt={creative.name}
+                              className="h-full w-full object-cover"
+                            />
+                          )}
+                        </div>
+
+                        <div className="p-3.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>
+                              {creative.name}
+                            </h4>
+                            <CreativeStatusBadge status={creative.status} />
+                          </div>
+                          <p className="mt-1 text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+                            {CREATIVE_TYPE_LABELS[creative.type]} · {formatFileSize(creative.fileSize)}
+                          </p>
+                          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                            {creative.nationality ? (
+                              <LeadNationalityBadge nationality={creative.nationality} />
+                            ) : null}
+                            {creative.tags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="rounded px-1.5 py-0.5 text-[10px]"
+                                style={{ background: "var(--bg-muted)", color: "var(--text-secondary)" }}
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </article>
                     ))}
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleGenerate}
-                    className="inline-flex items-center gap-2 rounded-md px-4 py-2 text-[12px] font-medium text-white"
-                    style={{ background: "var(--accent)" }}
-                  >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Generate
-                  </button>
-                </div>
-              </PanelSection>
-
-              <PanelSection title="Output" description="Generated concepts, scripts, and variations">
-                {generated ? (
-                  <pre
-                    className="whitespace-pre-wrap rounded-md p-3 text-[12px] leading-relaxed"
-                    style={{
-                      background: "var(--bg-muted)",
-                      color: "var(--text-primary)",
-                    }}
-                  >
-                    {generated}
-                  </pre>
                 ) : (
-                  <div className="flex h-48 flex-col items-center justify-center text-center">
-                    <Sparkles className="h-8 w-8" style={{ color: "var(--text-tertiary)" }} strokeWidth={1.5} />
-                    <p className="mt-2 text-[12px]" style={{ color: "var(--text-tertiary)" }}>
-                      Generated content will appear here
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <Film className="h-10 w-10" style={{ color: "var(--text-tertiary)" }} strokeWidth={1.5} />
+                    <p className="mt-3 text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>
+                      No creatives yet
+                    </p>
+                    <p className="mt-1 max-w-sm text-[12px]" style={{ color: "var(--text-tertiary)" }}>
+                      Upload MP4, WebM, MOV, or images. Files are stored on Hostinger and playable in the Hub.
                     </p>
                   </div>
                 )}
               </PanelSection>
             </div>
-          )}
+          </>
+        ) : (
+          <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
+            <Sparkles className="h-10 w-10" style={{ color: "var(--text-tertiary)" }} strokeWidth={1.5} />
+            <p className="mt-3 text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>
+              Coming soon
+            </p>
+            <p className="mt-1 max-w-md text-[12px]" style={{ color: "var(--text-tertiary)" }}>
+              Performance rankings and Higgsfield brief export are next. The library is live with Hostinger video storage.
+            </p>
+          </div>
+        )}
+      </div>
 
-          {activeTab === "testing" && (
-            <div className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <MetricCard label="Active Tests" value="2" />
-                <MetricCard label="Winners (30d)" value="4" changePositive change="+1 vs prior" />
-                <MetricCard label="Avg Fatigue Score" value="36" change="2 creatives need refresh" />
+      {selected ? (
+        <aside
+          className="flex w-[360px] shrink-0 flex-col border-l"
+          style={{ background: "var(--bg-surface)", borderColor: "var(--border-default)" }}
+        >
+          <div className="border-b p-4" style={{ borderColor: "var(--border-subtle)" }}>
+            <p className="text-[13px] font-semibold" style={{ color: "var(--text-primary)" }}>
+              {selected.name}
+            </p>
+            <p className="mt-0.5 text-[11px]" style={{ color: "var(--text-tertiary)" }}>
+              {CREATIVE_TYPE_LABELS[selected.type]} · {formatFileSize(selected.fileSize)}
+            </p>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 enterprise-scroll">
+            <div
+              className="mb-4 overflow-hidden rounded-lg border"
+              style={{ borderColor: "var(--border-subtle)", background: "var(--bg-muted)" }}
+            >
+              {isVideoMimeType(selected.mimeType) ? (
+                <video
+                  src={selected.assetUrl}
+                  controls
+                  playsInline
+                  className="aspect-video w-full bg-black object-contain"
+                />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={selected.assetUrl} alt={selected.name} className="w-full object-contain" />
+              )}
+            </div>
+
+            <div className="space-y-3 text-[12px]">
+              <div className="flex items-center gap-2">
+                <CreativeStatusBadge status={selected.status} />
+                {selected.nationality ? (
+                  <LeadNationalityBadge nationality={selected.nationality} />
+                ) : null}
               </div>
 
-              <PanelSection title="Creative Experiments" description="Winners, losers, and fatigue tracking">
-                <div className="space-y-2">
-                  {creativeTests.map((test) => (
-                    <div
-                      key={test.id}
-                      className="flex items-center justify-between rounded-md border px-3 py-2.5"
-                      style={{ borderColor: "var(--border-subtle)" }}
-                    >
-                      <div className="flex items-center gap-3">
-                        {test.status === "winner" ? (
-                          <Trophy className="h-4 w-4" style={{ color: "var(--success)" }} />
-                        ) : test.status === "loser" ? (
-                          <TrendingDown className="h-4 w-4" style={{ color: "var(--danger)" }} />
-                        ) : null}
-                        <div>
-                          <p className="text-[12px] font-medium" style={{ color: "var(--text-primary)" }}>
-                            {test.name}
-                          </p>
-                          <p className="text-[10px]" style={{ color: "var(--text-tertiary)" }}>
-                            Started {test.startedAt}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4 text-[11px] tabular-nums">
-                        <TestStatusBadge status={test.status} />
-                        <span style={{ color: "var(--text-secondary)" }}>{formatCurrency(test.spend)}</span>
-                        <span className="font-semibold" style={{ color: "var(--accent)" }}>
-                          {formatRoas(test.roas)}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <span style={{ color: "var(--text-tertiary)" }}>Fatigue</span>
-                          <FatigueBadge score={test.fatigueScore} />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+              {selected.metaAdName ? (
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+                    Meta ad name
+                  </p>
+                  <p className="mt-0.5" style={{ color: "var(--text-secondary)" }}>{selected.metaAdName}</p>
                 </div>
-              </PanelSection>
+              ) : null}
+
+              {selected.script ? (
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+                    Script / brief
+                  </p>
+                  <p className="mt-0.5 whitespace-pre-wrap" style={{ color: "var(--text-secondary)" }}>
+                    {selected.script}
+                  </p>
+                </div>
+              ) : null}
+
+              {selected.notes ? (
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+                    Notes
+                  </p>
+                  <p className="mt-0.5 whitespace-pre-wrap" style={{ color: "var(--text-secondary)" }}>
+                    {selected.notes}
+                  </p>
+                </div>
+              ) : null}
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+        </aside>
+      ) : null}
     </div>
   );
 }
