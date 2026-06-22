@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "prisma generate && next dev --webpack",
     "build": "prisma generate && next build",
-    "start": "next start",
+    "start": "next start -p ${PORT:-3000}",
     "lint": "eslint",
     "postinstall": "prisma generate",
     "db:generate": "prisma generate",

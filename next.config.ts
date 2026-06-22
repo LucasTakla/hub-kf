@@ -1,6 +1,15 @@
 import type { NextConfig } from "next";
 
+/** Must be >= CREATIVE_MAX_UPLOAD_MB (default 200) for video uploads via /api/creatives */
+const MAX_UPLOAD_BODY = "200mb";
+
 const nextConfig: NextConfig = {
+  experimental: {
+    proxyClientMaxBodySize: MAX_UPLOAD_BODY,
+    serverActions: {
+      bodySizeLimit: MAX_UPLOAD_BODY,
+    },
+  },
   images: {
     dangerouslyAllowSVG: true,
     contentDispositionType: "attachment",
