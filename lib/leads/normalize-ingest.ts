@@ -124,6 +124,8 @@ export function normalizeLeadIngestPayload(body: unknown): LeadIngestInput[] {
   const combinedCreatedAt = combineDateAndTime(createdAt, timeRaw);
 
   const revenue = pickRevenueFields(
+    record.monthlyRevenueLabel,
+    record.monthly_revenue_label,
     record.monthlyRevenue,
     record.monthly_revenue,
     record.monthlyRevenu0e,

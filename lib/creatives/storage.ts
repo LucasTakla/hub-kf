@@ -35,6 +35,10 @@ export function getCreativeUploadDir(): string {
   return path.join(/* turbopackIgnore: true */ process.cwd(), "public", "creatives");
 }
 
+export function isCreativeUploadDirConfigured(): boolean {
+  return Boolean(process.env.CREATIVE_UPLOAD_DIR?.trim());
+}
+
 export async function ensureCreativeUploadDir(): Promise<string> {
   const dir = getCreativeUploadDir();
   await mkdir(dir, { recursive: true });

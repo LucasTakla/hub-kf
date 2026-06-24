@@ -1,7 +1,7 @@
 "use client";
 
 import type { CreativeStatus, CreativeType, LeadNationality } from "@prisma/client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Upload } from "lucide-react";
 
 import { CREATIVE_STATUSES, CREATIVE_TYPES } from "@/lib/creatives/types";
@@ -25,6 +25,24 @@ export function CreativeUploadPanel({ onComplete }: CreativeUploadPanelProps) {
   const [tags, setTags] = useState("");
   const [script, setScript] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [storageInfo, setStorageInfo] = useState<{
+    uploadDir: string;
+    persistent: boolean;
+    warning: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    void fetch("/api/creatives/storage")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (data && typeof data.uploadDir === "string") {
+          setStorageInfo(data as { uploadDir: string; persistent: boolean; warning: string | null });
+        }
+      })
+      .catch(() => setStorageInfo(null));
+  }, [open]);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -97,9 +115,25 @@ export function CreativeUploadPanel({ onComplete }: CreativeUploadPanelProps) {
           className="mt-2 w-full max-w-md rounded-lg border p-3 text-left"
           style={{ background: "var(--bg-surface)", borderColor: "var(--border-default)" }}
         >
-          <p className="mb-3 text-[12px] font-medium" style={{ color: "var(--text-primary)" }}>
+          <p className="mb-1 text-[12px] font-medium" style={{ color: "var(--text-primary)" }}>
             Upload to Hostinger storage
           </p>
+          {storageInfo ? (
+            <div className="mb-3 space-y-1">
+              <p className="text-[10px] break-all" style={{ color: "var(--text-tertiary)" }}>
+                Server path: {storageInfo.uploadDir}
+              </p>
+              {storageInfo.warning ? (
+                <p className="text-[10px]" style={{ color: "var(--warning)" }}>
+                  {storageInfo.warning}
+                </p>
+              ) : (
+                <p className="text-[10px]" style={{ color: "var(--success)" }}>
+                  Persistent storage is configured.
+                </p>
+              )}
+            </div>
+          ) : null}
 
           <div className="space-y-2.5">
             <input

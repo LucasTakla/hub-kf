@@ -5,6 +5,8 @@ const NON_MQL_REVENUE_LABELS = new Set([
 ]);
 
 const REVENUE_METADATA_KEYS = [
+  "monthlyRevenueLabel",
+  "monthly_revenue_label",
   "monthlyRevenue",
   "monthly_revenue",
   "monthlyRevenu0e",
