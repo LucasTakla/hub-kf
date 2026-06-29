@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import { LeadsWorkspace } from "@/components/sales/leads/leads-workspace";
 import { SalesModulePage } from "@/components/sales/sales-module-page";
+import { listDeals } from "@/lib/deals/server";
 import { getLeadSources, getLeadStats, listLeads } from "@/lib/leads/server";
 import { modulePages } from "@/lib/navigation";
 
@@ -29,5 +30,7 @@ export default async function SalesPage({ params }: PageProps) {
     );
   }
 
-  return <SalesModulePage slug={slug} />;
+  const { items, total } = await listDeals({ limit: 200 });
+
+  return <SalesModulePage slug={slug} initialDeals={items} initialTotal={total} />;
 }

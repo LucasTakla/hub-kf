@@ -27,20 +27,29 @@ type PipelineBoardProps = {
   deals: Deal[];
   selectedId: string | null;
   onSelect: (deal: Deal) => void;
-  onMoveDeal: (dealId: string, stage: DealStage) => void;
+  onMoveDeal?: (dealId: string, stage: DealStage) => void;
+  readOnly?: boolean;
 };
 
 function SortableDealCard({
   deal,
   isSelected,
   onSelect,
+  readOnly,
 }: {
   deal: Deal;
   isSelected: boolean;
   onSelect: (deal: Deal) => void;
+  readOnly?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: deal.id });
+    useSortable({ id: deal.id, disabled: readOnly });
+
+  if (readOnly) {
+    return (
+      <DealCard deal={deal} isSelected={isSelected} onSelect={onSelect} />
+    );
+  }
 
   return (
     <div
@@ -67,12 +76,14 @@ function StageColumn({
   deals,
   selectedId,
   onSelect,
+  readOnly,
 }: {
   stageId: DealStage;
   label: string;
   deals: Deal[];
   selectedId: string | null;
   onSelect: (deal: Deal) => void;
+  readOnly?: boolean;
 }) {
   const { setNodeRef } = useDroppable({ id: stageId });
 
@@ -108,6 +119,7 @@ function StageColumn({
               deal={deal}
               isSelected={selectedId === deal.id}
               onSelect={onSelect}
+              readOnly={readOnly}
             />
           ))}
         </SortableContext>
@@ -116,7 +128,7 @@ function StageColumn({
   );
 }
 
-export function PipelineBoard({ deals, selectedId, onSelect, onMoveDeal }: PipelineBoardProps) {
+export function PipelineBoard({ deals, selectedId, onSelect, onMoveDeal, readOnly = false }: PipelineBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -134,11 +146,13 @@ export function PipelineBoard({ deals, selectedId, onSelect, onMoveDeal }: Pipel
   const activeDeal = activeId ? deals.find((d) => d.id === activeId) : null;
 
   function handleDragStart(event: DragStartEvent) {
+    if (readOnly) return;
     setActiveId(String(event.active.id));
   }
 
   function handleDragEnd(event: DragEndEvent) {
     setActiveId(null);
+    if (readOnly || !onMoveDeal) return;
     const { active, over } = event;
     if (!over) return;
 
@@ -157,6 +171,24 @@ export function PipelineBoard({ deals, selectedId, onSelect, onMoveDeal }: Pipel
     if (overDeal && overDeal.stage !== deal.stage) {
       onMoveDeal(dealId, overDeal.stage);
     }
+  }
+
+  if (readOnly) {
+    return (
+      <div className="flex h-full gap-3 overflow-x-auto overflow-y-hidden pb-2 enterprise-scroll">
+        {PIPELINE_STAGES.map(({ id, label }) => (
+          <StageColumn
+            key={id}
+            stageId={id}
+            label={label}
+            deals={dealsByStage[id]}
+            selectedId={selectedId}
+            onSelect={onSelect}
+            readOnly
+          />
+        ))}
+      </div>
+    );
   }
 
   return (

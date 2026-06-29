@@ -1,0 +1,23 @@
+{
+  "deals": [
+    {
+      "action": "opportunity-created",
+      "ghlOpportunityId": "GHL_OPPORTUNITY_ID_1",
+      "ghlContactId": "GHL_CONTACT_ID_1",
+      "stage": "New Lead",
+      "businessName": "Example Business LLC",
+      "contactEmail": "owner@example.com",
+      "contactPhone": "+13055550142",
+      "owner": "Maria Santos",
+      "fundingAmount": 80000
+    },
+    {
+      "action": "opportunity-created",
+      "ghlOpportunityId": "GHL_OPPORTUNITY_ID_2",
+      "ghlContactId": "GHL_CONTACT_ID_2",
+      "stage": "Submitted",
+      "businessName": "Another Company",
+      "contactEmail": "mike@example.com"
+    }
+  ]
+}

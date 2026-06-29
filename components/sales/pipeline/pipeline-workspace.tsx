@@ -1,20 +1,36 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Bot, Plus, Search } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { Bot, Search } from "lucide-react";
 
 import { ModuleHeader } from "@/components/marketing/shared/panel-section";
 import { MetricCard } from "@/components/marketing/shared/metric-card";
 import { formatCurrency } from "@/components/marketing/shared/panel-section";
 import { DealDetailPanel } from "@/components/sales/deal/deal-detail-panel";
 import { PipelineBoard } from "@/components/sales/pipeline/pipeline-board";
-import { initialDeals } from "@/lib/sales/mock-data";
-import type { Deal, DealStage } from "@/lib/sales/types";
+import type { Deal } from "@/lib/sales/types";
 
-export function PipelineWorkspace() {
-  const [deals, setDeals] = useState<Deal[]>(initialDeals);
-  const [selectedId, setSelectedId] = useState<string | null>("deal-1");
+type PipelineWorkspaceProps = {
+  initialDeals: Deal[];
+  initialTotal: number;
+};
+
+export function PipelineWorkspace({ initialDeals, initialTotal }: PipelineWorkspaceProps) {
+  const [deals, setDeals] = useState(initialDeals);
+  const [total, setTotal] = useState(initialTotal);
+  const [selectedId, setSelectedId] = useState<string | null>(initialDeals[0]?.id ?? null);
   const [search, setSearch] = useState("");
+
+  const loadDeals = useCallback(async () => {
+    const response = await fetch("/api/deals?stats=1");
+    if (!response.ok) return;
+    const data = (await response.json()) as { items: Deal[]; total: number };
+    setDeals(data.items);
+    setTotal(data.total);
+    setSelectedId((current) =>
+      current ? data.items.find((item) => item.id === current)?.id ?? data.items[0]?.id ?? null : data.items[0]?.id ?? null,
+    );
+  }, []);
 
   const filteredDeals = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -37,36 +53,11 @@ export function PipelineWorkspace() {
     return { active: active.length, pipelineValue, withOffers, funded };
   }, [deals]);
 
-  function handleMoveDeal(dealId: string, stage: DealStage) {
-    setDeals((prev) =>
-      prev.map((d) =>
-        d.id === dealId
-          ? {
-              ...d,
-              stage,
-              daysInStage: 0,
-              lastActivity: `Moved to ${stage.replace(/-/g, " ")}`,
-              activities: [
-                {
-                  id: `act-${Date.now()}`,
-                  type: "stage",
-                  description: `Deal moved to ${stage.replace(/-/g, " ")}`,
-                  user: "You",
-                  timestamp: new Date().toISOString(),
-                },
-                ...d.activities,
-              ],
-            }
-          : d,
-      ),
-    );
-  }
-
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <ModuleHeader
         title="Deal Management"
-        purpose="Your daily funding workspace — every card is a Deal moving toward funded"
+        purpose="Pipeline stages sync from GoHighLevel — move deals in GHL, track apps and offers here"
       />
 
       <div
@@ -80,7 +71,7 @@ export function PipelineWorkspace() {
           <MetricCard label="Active Deals" value={String(stats.active)} />
           <MetricCard label="Pipeline Value" value={formatCurrency(stats.pipelineValue)} highlight />
           <MetricCard label="With Offers" value={String(stats.withOffers)} />
-          <MetricCard label="Funded (MTD)" value={String(stats.funded)} changePositive />
+          <MetricCard label="Funded" value={String(stats.funded)} changePositive />
         </div>
 
         <div className="flex items-center gap-2">
@@ -101,14 +92,6 @@ export function PipelineWorkspace() {
               style={{ color: "var(--text-primary)" }}
             />
           </div>
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[12px] font-medium text-white"
-            style={{ background: "var(--accent)" }}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            New Deal
-          </button>
         </div>
       </div>
 
@@ -121,21 +104,37 @@ export function PipelineWorkspace() {
       >
         <Bot className="h-3.5 w-3.5 shrink-0" style={{ color: "var(--accent)" }} />
         <p className="text-[11px]" style={{ color: "var(--text-primary)" }}>
-          <strong>3 deals</strong> need action today — Joe&apos;s Restaurant has offers to present, Coastal Dental is ready to submit, Green Leaf is missing bank statements.
+          <strong>{total} deals synced</strong> from GoHighLevel. Stages are read-only here — update them in GHL and they will sync via n8n.
         </p>
       </div>
 
       <div className="flex min-h-0 flex-1">
         <div className="min-w-0 flex-1 p-4">
-          <PipelineBoard
-            deals={filteredDeals}
-            selectedId={selectedId}
-            onSelect={(deal) => setSelectedId(deal.id)}
-            onMoveDeal={handleMoveDeal}
-          />
+          {filteredDeals.length > 0 ? (
+            <PipelineBoard
+              deals={filteredDeals}
+              selectedId={selectedId}
+              onSelect={(deal) => setSelectedId(deal.id)}
+              readOnly
+            />
+          ) : (
+            <div
+              className="flex h-full items-center justify-center rounded-lg border border-dashed p-8 text-center"
+              style={{ borderColor: "var(--border-default)" }}
+            >
+              <div>
+                <p className="text-[13px] font-medium" style={{ color: "var(--text-primary)" }}>
+                  No deals synced yet
+                </p>
+                <p className="mt-1 text-[12px]" style={{ color: "var(--text-secondary)" }}>
+                  Connect GHL opportunity webhooks to <code className="text-[11px]">POST /api/deals/sync</code>
+                </p>
+              </div>
+            </div>
+          )}
         </div>
         {selectedDeal ? (
-          <DealDetailPanel deal={selectedDeal} onClose={() => setSelectedId(null)} />
+          <DealDetailPanel deal={selectedDeal} onClose={() => setSelectedId(null)} onRefresh={loadDeals} />
         ) : null}
       </div>
     </div>

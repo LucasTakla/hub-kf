@@ -31,6 +31,7 @@ import type { Deal, DealDetailTab } from "@/lib/sales/types";
 type DealDetailPanelProps = {
   deal: Deal | null;
   onClose: () => void;
+  onRefresh?: () => Promise<void> | void;
 };
 
 const detailTabs: { id: DealDetailTab; label: string }[] = [

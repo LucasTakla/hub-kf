@@ -4,20 +4,26 @@ import { ApplicationsWorkspace } from "@/components/sales/applications/applicati
 import { LendersWorkspace } from "@/components/sales/lenders/lenders-workspace";
 import { OffersWorkspace } from "@/components/sales/offers/offers-workspace";
 import { PipelineWorkspace } from "@/components/sales/pipeline/pipeline-workspace";
-
-const workspaces: Record<string, React.ComponentType> = {
-  pipeline: PipelineWorkspace,
-  applications: ApplicationsWorkspace,
-  offers: OffersWorkspace,
-  lenders: LendersWorkspace,
-};
+import type { Deal } from "@/lib/sales/types";
 
 type SalesModulePageProps = {
   slug: string;
+  initialDeals: Deal[];
+  initialTotal: number;
 };
 
-export function SalesModulePage({ slug }: SalesModulePageProps) {
-  const Workspace = workspaces[slug];
-  if (!Workspace) return null;
-  return <Workspace />;
+export function SalesModulePage({ slug, initialDeals, initialTotal }: SalesModulePageProps) {
+  if (slug === "pipeline") {
+    return <PipelineWorkspace initialDeals={initialDeals} initialTotal={initialTotal} />;
+  }
+  if (slug === "applications") {
+    return <ApplicationsWorkspace initialDeals={initialDeals} />;
+  }
+  if (slug === "offers") {
+    return <OffersWorkspace initialDeals={initialDeals} />;
+  }
+  if (slug === "lenders") {
+    return <LendersWorkspace />;
+  }
+  return null;
 }

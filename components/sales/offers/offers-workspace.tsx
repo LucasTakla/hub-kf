@@ -1,17 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Scale, Search } from "lucide-react";
 
 import { MetricCard } from "@/components/marketing/shared/metric-card";
 import { ModuleHeader, PanelSection, formatCurrency, formatNumber } from "@/components/marketing/shared/panel-section";
+import { OfferComparison } from "@/components/sales/offers/offer-comparison";
+import { AddOfferForm } from "@/components/sales/shared/add-offer-form";
 import { OfferStatusBadge, OwnerAvatar } from "@/components/sales/shared/badges";
 import { ViewToggle, type WorkspaceView } from "@/components/sales/shared/view-toggle";
-import { OfferComparison } from "@/components/sales/offers/offer-comparison";
 import { OFFER_STATUSES } from "@/lib/sales/constants";
-import { initialDeals } from "@/lib/sales/mock-data";
 import { flattenOffers, getDealsWithMultipleOffers } from "@/lib/sales/selectors";
-import type { OfferRecord, OfferStatus } from "@/lib/sales/types";
+import type { Deal, OfferRecord, OfferStatus } from "@/lib/sales/types";
 
 function OfferKanbanCard({ offer }: { offer: OfferRecord }) {
   const expiringSoon = offer.daysUntilExpiry <= 7 && offer.status !== "expired" && offer.status !== "accepted";
@@ -44,14 +44,32 @@ function OfferKanbanCard({ offer }: { offer: OfferRecord }) {
   );
 }
 
-export function OffersWorkspace() {
+export function OffersWorkspace({
+  initialDeals,
+}: {
+  initialDeals: Deal[];
+}) {
+  const [deals, setDeals] = useState(initialDeals);
   const [view, setView] = useState<WorkspaceView>("table");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<OfferStatus | "all">("all");
-  const [compareDealId, setCompareDealId] = useState<string | null>("deal-1");
+  const [compareDealId, setCompareDealId] = useState<string | null>(null);
 
-  const offers = useMemo(() => flattenOffers(initialDeals), []);
-  const dealsWithOffers = useMemo(() => getDealsWithMultipleOffers(initialDeals), []);
+  const loadDeals = useCallback(async () => {
+    const response = await fetch("/api/deals");
+    if (!response.ok) return;
+    const data = (await response.json()) as { items: Deal[] };
+    setDeals(data.items);
+  }, []);
+
+  useEffect(() => {
+    setDeals(initialDeals);
+    const firstCompare = getDealsWithMultipleOffers(initialDeals)[0]?.id ?? null;
+    setCompareDealId(firstCompare);
+  }, [initialDeals]);
+
+  const offers = useMemo(() => flattenOffers(deals), [deals]);
+  const dealsWithOffers = useMemo(() => getDealsWithMultipleOffers(deals), [deals]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -204,6 +222,7 @@ export function OffersWorkspace() {
             ))}
           </div>
         </div>
+        <AddOfferForm deals={deals} onComplete={loadDeals} />
         <div
           className="flex items-center gap-2 rounded-md border px-2.5 py-1.5"
           style={{ background: "var(--bg-muted)", borderColor: "var(--border-default)" }}

@@ -16,7 +16,8 @@
     "db:migrate": "dotenv -e .env.local -- prisma migrate dev",
     "db:seed": "dotenv -e .env.local -- prisma db seed",
     "db:studio": "dotenv -e .env.local -- prisma studio",
-    "db:backfill-revenue-labels": "dotenv -e .env.local -- tsx scripts/backfill-revenue-labels.ts"
+    "db:backfill-revenue-labels": "dotenv -e .env.local -- tsx scripts/backfill-revenue-labels.ts",
+    "deals:sync-batch": "dotenv -e .env.local -- tsx scripts/sync-deals-batch.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.5.1",

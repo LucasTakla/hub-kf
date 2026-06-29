@@ -83,6 +83,40 @@ enum CreativeStatus {
   TESTING
 }
 
+enum DealStage {
+  NEW
+  QUALIFIED
+  COLLECTING_DOCS
+  READY_TO_SUBMIT
+  SUBMITTED
+  OFFERS_RECEIVED
+  NEGOTIATING
+  FUNDED
+  LOST
+}
+
+enum DealPriority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  DECLINED
+}
+
+enum OfferStatus {
+  RECEIVED
+  PRESENTED
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
 model Creative {
   id           String           @id @default(cuid())
   name         String
@@ -130,6 +164,7 @@ model Lead {
   ingestedAt    DateTime   @default(now())
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
+  deals         Deal[]
 
   @@index([status, createdAt])
   @@index([email])
@@ -204,6 +239,77 @@ model RoadmapActivity {
 
   @@index([createdAt])
   @@index([type])
+}
+
+model Deal {
+  id               String         @id @default(cuid())
+  ghlOpportunityId String?        @unique
+  ghlContactId     String?
+  ghlStageName     String?
+  leadId           String?
+  lead             Lead?          @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  businessName     String
+  fundingAmount    Float          @default(0)
+  fundedAmount     Float?
+  owner            String?
+  stage            DealStage      @default(NEW)
+  stageEnteredAt   DateTime       @default(now())
+  priority         DealPriority   @default(MEDIUM)
+  lastActivity     String?
+  industry         String?
+  annualRevenue    Float?
+  contactName      String?
+  contactEmail     String?
+  contactPhone     String?
+  source           String?
+  internalNotes    String?
+  metadata         Json?
+  syncedAt         DateTime?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  applications     DealApplication[]
+  offers           DealOffer[]
+
+  @@index([stage, updatedAt])
+  @@index([owner])
+  @@index([ghlContactId])
+  @@index([leadId])
+}
+
+model DealApplication {
+  id             String            @id @default(cuid())
+  dealId         String
+  deal           Deal              @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  lender         String
+  submissionDate DateTime?
+  status         ApplicationStatus @default(DRAFT)
+  notes          String?
+  assignedUser   String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([dealId])
+  @@index([status])
+}
+
+model DealOffer {
+  id               String      @id @default(cuid())
+  dealId           String
+  deal             Deal        @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  lender           String
+  amount           Float
+  factorRate       Float?
+  term             String?
+  paymentFrequency String?
+  status           OfferStatus @default(RECEIVED)
+  expirationDate   DateTime?
+  dailyPayment     Float?
+  notes            String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([dealId])
+  @@index([status])
 }
 
 model Integration {

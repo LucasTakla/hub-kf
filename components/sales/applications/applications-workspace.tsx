@@ -1,16 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertCircle, Search } from "lucide-react";
 
 import { MetricCard } from "@/components/marketing/shared/metric-card";
 import { ModuleHeader, PanelSection, formatNumber } from "@/components/marketing/shared/panel-section";
+import { AddApplicationForm } from "@/components/sales/shared/add-application-form";
 import { ApplicationStatusBadge, OwnerAvatar } from "@/components/sales/shared/badges";
 import { ViewToggle, type WorkspaceView } from "@/components/sales/shared/view-toggle";
 import { APPLICATION_STATUSES } from "@/lib/sales/constants";
-import { initialDeals } from "@/lib/sales/mock-data";
 import { flattenApplications } from "@/lib/sales/selectors";
-import type { ApplicationRecord, ApplicationStatus } from "@/lib/sales/types";
+import type { ApplicationRecord, ApplicationStatus, Deal } from "@/lib/sales/types";
 
 function ApplicationKanbanCard({ app }: { app: ApplicationRecord }) {
   return (
@@ -49,12 +49,28 @@ function ApplicationKanbanCard({ app }: { app: ApplicationRecord }) {
   );
 }
 
-export function ApplicationsWorkspace() {
+export function ApplicationsWorkspace({
+  initialDeals,
+}: {
+  initialDeals: Deal[];
+}) {
+  const [deals, setDeals] = useState(initialDeals);
   const [view, setView] = useState<WorkspaceView>("table");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | "all">("all");
 
-  const applications = useMemo(() => flattenApplications(initialDeals), []);
+  const loadDeals = useCallback(async () => {
+    const response = await fetch("/api/deals");
+    if (!response.ok) return;
+    const data = (await response.json()) as { items: Deal[] };
+    setDeals(data.items);
+  }, []);
+
+  useEffect(() => {
+    setDeals(initialDeals);
+  }, [initialDeals]);
+
+  const applications = useMemo(() => flattenApplications(deals), [deals]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -64,7 +80,7 @@ export function ApplicationsWorkspace() {
         !q ||
         app.businessName.toLowerCase().includes(q) ||
         app.lender.toLowerCase().includes(q) ||
-        app.assignedUser.toLowerCase().includes(q);
+        (app.assignedUser ?? "").toLowerCase().includes(q);
       return matchesStatus && matchesSearch;
     });
   }, [applications, search, statusFilter]);
@@ -90,7 +106,8 @@ export function ApplicationsWorkspace() {
 
     const byOwner = Object.entries(
       applications.reduce<Record<string, number>>((acc, a) => {
-        acc[a.assignedUser] = (acc[a.assignedUser] ?? 0) + 1;
+        const owner = a.assignedUser || "Unassigned";
+        acc[owner] = (acc[owner] ?? 0) + 1;
         return acc;
       }, {}),
     )
@@ -185,6 +202,7 @@ export function ApplicationsWorkspace() {
             ))}
           </div>
         </div>
+        <AddApplicationForm deals={deals} onComplete={loadDeals} />
         <div
           className="flex items-center gap-2 rounded-md border px-2.5 py-1.5"
           style={{ background: "var(--bg-muted)", borderColor: "var(--border-default)" }}
@@ -237,8 +255,8 @@ export function ApplicationsWorkspace() {
                             </td>
                             <td className="py-2.5 pr-3">
                               <div className="flex items-center gap-1.5">
-                                <OwnerAvatar name={app.assignedUser} />
-                                <span style={{ color: "var(--text-secondary)" }}>{app.assignedUser}</span>
+                                <OwnerAvatar name={app.assignedUser || "Unassigned"} />
+                                <span style={{ color: "var(--text-secondary)" }}>{app.assignedUser || "Unassigned"}</span>
                               </div>
                             </td>
                             <td className="py-2.5 pr-3 text-right tabular-nums" style={{ color: "var(--text-secondary)" }}>
