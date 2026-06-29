@@ -135,7 +135,9 @@ export async function syncDealFromGhl(input: DealSyncInput) {
     );
   }
 
-  const leadId = existing?.leadId ?? (await linkLeadForDeal(input));
+  const leadId =
+    existing?.leadId ??
+    (input.skipLeadLink ? null : await linkLeadForDeal(input));
   const stage = input.stage ?? existing?.stage ?? "NEW";
   const stageChanged = existing ? existing.stage !== stage : true;
 

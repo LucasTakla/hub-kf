@@ -41,7 +41,7 @@ export function DealsCsvImport({ onComplete }: DealsCsvImportProps) {
 
       let imported = 0;
       let failed = 0;
-      const batchSize = 100;
+      const batchSize = 15;
 
       for (let i = 0; i < deals.length; i += batchSize) {
         const batch = deals.slice(i, i + batchSize);

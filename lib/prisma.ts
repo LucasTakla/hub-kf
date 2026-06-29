@@ -10,11 +10,7 @@ function createPrismaClient() {
   });
 }
 
-// Recreate client in dev when schema changes (e.g. new models) left a stale singleton.
-const cached = globalForPrisma.prisma;
-export const prisma =
-  cached && "release" in cached ? cached : createPrismaClient();
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
-}
+// Always reuse one client per Node process (critical on Hostinger/shared hosting).
+globalForPrisma.prisma = prisma;

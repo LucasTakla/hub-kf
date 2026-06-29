@@ -27,6 +27,8 @@ export type DealSyncInput = {
   source?: string | null;
   internalNotes?: string | null;
   createdAt?: Date | null;
+  /** Skip expensive lead matching during bulk CSV import. */
+  skipLeadLink?: boolean;
   metadata?: Record<string, unknown> | null;
 };
 

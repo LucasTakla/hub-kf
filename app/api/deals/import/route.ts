@@ -62,6 +62,7 @@ export async function POST(request: Request) {
         coerceDealSyncInput({
           ...record,
           action: "opportunity-created",
+          skipLeadLink: true,
         }),
       );
       imported += 1;
