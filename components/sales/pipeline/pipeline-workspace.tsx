@@ -7,6 +7,7 @@ import { ModuleHeader } from "@/components/marketing/shared/panel-section";
 import { MetricCard } from "@/components/marketing/shared/metric-card";
 import { formatCurrency } from "@/components/marketing/shared/panel-section";
 import { DealDetailPanel } from "@/components/sales/deal/deal-detail-panel";
+import { DealsCsvImport } from "@/components/sales/pipeline/deals-csv-import";
 import { PipelineBoard } from "@/components/sales/pipeline/pipeline-board";
 import type { Deal } from "@/lib/sales/types";
 
@@ -92,6 +93,7 @@ export function PipelineWorkspace({ initialDeals, initialTotal }: PipelineWorksp
               style={{ color: "var(--text-primary)" }}
             />
           </div>
+          <DealsCsvImport onComplete={loadDeals} />
         </div>
       </div>
 
