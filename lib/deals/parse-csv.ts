@@ -1,6 +1,7 @@
 import { mapGhlStageToDealStage } from "@/lib/deals/stage-map";
 import type { DealSyncInput } from "@/lib/deals/types";
 import { parseCsvText } from "@/lib/leads/parse-csv";
+import { parseLeadDate } from "@/lib/leads/parse-values";
 
 export { parseCsvText };
 
@@ -17,7 +18,8 @@ type CsvField =
   | "fundedAmount"
   | "source"
   | "industry"
-  | "internalNotes";
+  | "internalNotes"
+  | "createdAt";
 
 const HEADER_ALIASES: Record<string, CsvField> = {
   opportunity_id: "ghlOpportunityId",
@@ -71,6 +73,12 @@ const HEADER_ALIASES: Record<string, CsvField> = {
   industry: "industry",
   notes: "internalNotes",
   internal_notes: "internalNotes",
+  created_at: "createdAt",
+  createdat: "createdAt",
+  created_on: "createdAt",
+  createdon: "createdAt",
+  date_created: "createdAt",
+  opportunity_created_at: "createdAt",
 };
 
 function resolveCsvField(header: string): CsvField | null {
@@ -81,6 +89,17 @@ function parseNumber(value: string | undefined): number | null {
   if (!value?.trim()) return null;
   const parsed = Number.parseFloat(value.replace(/[^0-9.-]/g, ""));
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+/** Supports GHL ISO timestamps, e.g. 2026-06-29T02:41:14.004Z */
+function parseCreatedAt(value: string | undefined): Date | null {
+  if (!value?.trim()) return null;
+  const raw = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) {
+    const parsed = new Date(raw);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+  return parseLeadDate(raw);
 }
 
 export function csvRowsToDealSyncInputs(headers: string[], rows: string[][]): DealSyncInput[] {
@@ -107,6 +126,12 @@ export function csvRowsToDealSyncInputs(headers: string[], rows: string[][]): De
         if (field === "fundingAmount" || field === "fundedAmount") {
           const parsed = parseNumber(value);
           if (parsed != null) input[field] = parsed;
+          return;
+        }
+
+        if (field === "createdAt") {
+          const parsed = parseCreatedAt(value);
+          if (parsed) input.createdAt = parsed;
           return;
         }
 

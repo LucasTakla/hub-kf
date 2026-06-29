@@ -4,6 +4,18 @@ import { NextResponse } from "next/server";
 import { syncDealFromGhl } from "@/lib/deals/server";
 import type { DealSyncInput } from "@/lib/deals/types";
 
+function coerceDealSyncInput(
+  record: DealSyncInput & { createdAt?: string | Date | null },
+): DealSyncInput {
+  if (!record.createdAt) return record;
+  if (record.createdAt instanceof Date) return record;
+  const parsed = new Date(record.createdAt);
+  return {
+    ...record,
+    createdAt: Number.isNaN(parsed.getTime()) ? undefined : parsed,
+  };
+}
+
 export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) {
@@ -46,10 +58,12 @@ export async function POST(request: Request) {
     }
 
     try {
-      await syncDealFromGhl({
-        ...record,
-        action: "opportunity-created",
-      });
+      await syncDealFromGhl(
+        coerceDealSyncInput({
+          ...record,
+          action: "opportunity-created",
+        }),
+      );
       imported += 1;
     } catch (error) {
       failed += 1;

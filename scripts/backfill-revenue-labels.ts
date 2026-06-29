@@ -1,5 +1,18 @@
+import { getLeadRevenueLabel } from "../lib/leads/qualification";
 import { applyStandardLeadRevenue } from "../lib/leads/revenue-labels";
 import { prisma } from "../lib/prisma";
+
+function resolveLeadRevenue(lead: {
+  monthlyRevenueLabel?: string | null;
+  monthlyRevenue?: number | null;
+  metadata?: unknown;
+}) {
+  const label = getLeadRevenueLabel(lead);
+  if (label) {
+    return applyStandardLeadRevenue({ monthlyRevenueLabel: label });
+  }
+  return applyStandardLeadRevenue(lead);
+}
 
 async function main() {
   const batchSize = 500;
@@ -24,7 +37,7 @@ async function main() {
 
     for (const lead of leads) {
       scanned += 1;
-      const revenue = applyStandardLeadRevenue(lead);
+      const revenue = resolveLeadRevenue(lead);
       if (!revenue.monthlyRevenueLabel && revenue.monthlyRevenue == null) continue;
       if (
         lead.monthlyRevenueLabel === revenue.monthlyRevenueLabel &&

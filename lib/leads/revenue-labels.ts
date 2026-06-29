@@ -133,6 +133,7 @@ export function normalizeLeadRevenue(raw: unknown): {
 export function applyStandardLeadRevenue(input: {
   monthlyRevenueLabel?: string | null;
   monthlyRevenue?: number | null;
+  metadata?: unknown;
 }): {
   monthlyRevenueLabel: string | null;
   monthlyRevenue: number | null;
@@ -143,6 +144,20 @@ export function applyStandardLeadRevenue(input: {
       monthlyRevenueLabel: label,
       monthlyRevenue: resolveMonthlyRevenueFromLabel(label),
     };
+  }
+
+  if (input.metadata && typeof input.metadata === "object" && !Array.isArray(input.metadata)) {
+    const record = input.metadata as Record<string, unknown>;
+    for (const key of ["monthlyRevenueLabel", "monthly_revenue_label", "monthlyRevenue", "monthlyRevenu0e", "monthly_revenue"] as const) {
+      const value = record[key];
+      if (typeof value === "string" && value.trim()) {
+        const label = value.trim();
+        return {
+          monthlyRevenueLabel: label,
+          monthlyRevenue: resolveMonthlyRevenueFromLabel(label),
+        };
+      }
+    }
   }
 
   if (input.monthlyRevenue != null && Number.isFinite(input.monthlyRevenue)) {

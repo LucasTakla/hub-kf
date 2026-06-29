@@ -2,6 +2,7 @@ import type { DealPriority, DealStage } from "@prisma/client";
 
 import { mapGhlStageToDealStage } from "@/lib/deals/stage-map";
 import type { DealSyncAction, DealSyncInput } from "@/lib/deals/types";
+import { parseLeadDate } from "@/lib/leads/parse-values";
 
 const VALID_PRIORITIES = new Set<DealPriority>(["HIGH", "MEDIUM", "LOW"]);
 
@@ -59,6 +60,22 @@ function pickStage(...values: unknown[]): DealStage | undefined {
     if (allowed.includes(normalized)) return normalized;
   }
   return undefined;
+}
+
+function pickCreatedAt(...values: unknown[]): Date | null {
+  for (const value of values) {
+    if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+    if (typeof value === "string" && value.trim()) {
+      const raw = value.trim();
+      if (/^\d{4}-\d{2}-\d{2}T/.test(raw)) {
+        const parsed = new Date(raw);
+        if (!Number.isNaN(parsed.getTime())) return parsed;
+      }
+      const parsed = parseLeadDate(raw);
+      if (parsed) return parsed;
+    }
+  }
+  return null;
 }
 
 function pickAction(value: unknown): DealSyncAction | undefined {
@@ -198,6 +215,14 @@ export function normalizeDealSyncPayload(body: unknown): DealSyncInput[] {
     contactPhone: pickString(record.contactPhone, record.contact_phone, record.phone, contact?.phone),
     source: pickString(record.source, record.leadSource, record.lead_source),
     internalNotes: pickString(record.internalNotes, record.internal_notes, record.notes),
+    createdAt: pickCreatedAt(
+      record.createdAt,
+      record.created_at,
+      record.createdOn,
+      record.created_on,
+      record.dateCreated,
+      record.date_created,
+    ),
     metadata: record as Record<string, unknown>,
   };
 

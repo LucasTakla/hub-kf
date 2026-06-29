@@ -161,6 +161,7 @@ export async function syncDealFromGhl(input: DealSyncInput) {
         ...(input.contactPhone ? { contactPhone: input.contactPhone } : {}),
         ...(input.source ? { source: input.source } : {}),
         ...(input.internalNotes ? { internalNotes: input.internalNotes } : {}),
+        ...(input.createdAt ? { createdAt: input.createdAt } : {}),
         ...(input.metadata
           ? { metadata: input.metadata as Prisma.InputJsonValue }
           : {}),
@@ -173,6 +174,7 @@ export async function syncDealFromGhl(input: DealSyncInput) {
   }
 
   const businessName = await resolveBusinessNameForCreate(input, leadId);
+  const createdAt = input.createdAt ?? new Date();
 
   const deal = await prisma.deal.create({
     data: {
@@ -185,7 +187,7 @@ export async function syncDealFromGhl(input: DealSyncInput) {
       fundedAmount: input.fundedAmount ?? undefined,
       owner: input.owner ?? undefined,
       stage,
-      stageEnteredAt: new Date(),
+      stageEnteredAt: createdAt,
       priority: input.priority ?? "MEDIUM",
       lastActivity: input.lastActivity ?? input.ghlStageName ?? "Synced from GoHighLevel",
       industry: input.industry ?? undefined,
@@ -196,6 +198,7 @@ export async function syncDealFromGhl(input: DealSyncInput) {
       source: input.source ?? undefined,
       internalNotes: input.internalNotes ?? undefined,
       metadata: (input.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
+      createdAt,
       syncedAt: new Date(),
     },
     include: dealInclude,

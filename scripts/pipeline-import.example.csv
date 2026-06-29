@@ -1,4 +1,3 @@
-opportunity_id,contact_id,stage,business_name,contact_email,contact_phone,owner,funding_amount
-GHL_OPP_001,GHL_CONTACT_001,New Lead,Joe's Restaurant,joe@example.com,+13055550142,Maria Santos,80000
-GHL_OPP_002,GHL_CONTACT_002,Submitted,Sunrise Auto Repair,mike@example.com,+17865550198,Alex Rivera,45000
-GHL_OPP_003,GHL_CONTACT_003,Docs requested,Green Leaf Landscaping,carlos@example.com,+19545550167,Jordan Kim,35000
+opportunity_id,contact_id,stage,business_name,contact_name,contact_email,contact_phone,owner,funding_amount,created_at
+GHL_OPP_001,GHL_CONTACT_001,New Lead,Joe's Restaurant,Joe Martinez,joe@example.com,+13055550142,Maria Santos,80000,2026-06-29T02:41:14.004Z
+GHL_OPP_002,GHL_CONTACT_002,Submitted,Sunrise Auto Repair,Mike Chen,mike@example.com,+17865550198,Alex Rivera,45000,2026-06-15T14:20:00.000Z

@@ -26,6 +26,7 @@ export type DealSyncInput = {
   contactPhone?: string | null;
   source?: string | null;
   internalNotes?: string | null;
+  createdAt?: Date | null;
   metadata?: Record<string, unknown> | null;
 };
 
